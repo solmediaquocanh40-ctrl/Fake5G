@@ -249,7 +249,7 @@ static BOOL FG5VerifyKey(NSString *key, NSInteger *kindOut, NSString **nameOut) 
                                            (__bridge CFDictionaryRef)attrs, &err);
     if (!pub) { if (err) CFRelease(err); return NO; }
     // Chữ ký trong key là DER — đúng định dạng X962 đòi (bài học ZUS 1.2.0/1.2.1)
-    BOOL ok = SecKeyVerifySignature(pub, SecKeyAlgorithmECDSASignatureMessageX962SHA256,
+    BOOL ok = SecKeyVerifySignature(pub, kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
                                     (__bridge CFDataRef)payload, (__bridge CFDataRef)sigDER, &err);
     if (err) CFRelease(err);
     CFRelease(pub);

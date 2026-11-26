@@ -1,4 +1,4 @@
-// Tweak.x — Fake5G 1.1.2 (com.anhdang.fake5g)
+// Tweak.x — Fake5G 1.1.3 (com.anhdang.fake5g)
 // Giả hiển thị trên thanh trạng thái: thay icon Wi-Fi bằng nhãn chữ tuỳ chọn
 // (4G/5G/tự nhập), hiện vạch sóng giả + tên nhà mạng giả cho máy không SIM,
 // ẩn chữ "Không có SIM". Chỉ giả HIỂN THỊ — kết nối thật giữ nguyên 100%.
@@ -81,6 +81,7 @@ static BOOL FG5IsNoSimText(NSString *text) {
 - (UIWindow *)bestStatusBarWindowWithFound:(NSMutableDictionary **)foundOut;
 - (NSInteger)scoreForFound:(NSDictionary *)found;
 - (NSString *)ancestorChainOfView:(UIView *)view;
+- (UIFont *)statusBarFontFromStrings:(NSArray *)strings size:(CGFloat)size;
 - (UIColor *)statusBarContentColorNearView:(UIView *)view fallbackWindow:(UIWindow *)window;
 @end
 
@@ -98,7 +99,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 - (void)start {
     self.loggedTexts = [NSMutableSet set];
     [self reloadPrefs];
-    FG5Log(@"Fake5G 1.1.2 khoi dong — ban quyen: %@", FG5LicenseStatusText());
+    FG5Log(@"Fake5G 1.1.3 khoi dong — ban quyen: %@", FG5LicenseStatusText());
     self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                   target:self
                                                 selector:@selector(tick)
@@ -158,6 +159,20 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         v = v.superview;
     }
     return [parts componentsJoinedByString:@" > "];
+}
+
+// Font chuẩn của chính iPhone: mượn font của một view chữ thật trên thanh
+// trạng thái (view giờ / nhà mạng — chúng dùng đúng SF của hệ thống) rồi
+// chỉnh về cỡ cần thiết. Không đọc được thì dùng font hệ thống semibold.
+- (UIFont *)statusBarFontFromStrings:(NSArray *)strings size:(CGFloat)size {
+    for (UIView *sv in strings) {
+        UIFont *f = nil;
+        @try { f = [sv valueForKey:@"font"]; } @catch (NSException *e) {}
+        if ([f isKindOfClass:[UIFont class]]) {
+            return [f fontWithSize:size];
+        }
+    }
+    return [UIFont systemFontOfSize:size weight:UIFontWeightSemibold];
 }
 
 // Lịch sử chọn cửa sổ: 1.0.0 bắt nhầm SBStatusBarReusePoolWindow (kho chứa
@@ -253,7 +268,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 }
 
 - (void)dumpTree:(UIView *)view depth:(NSInteger)depth {
-    // Trần 220 dòng: từ 1.1.2 cửa sổ bám được có thể là cửa sổ toàn màn hình
+    // Trần 220 dòng: từ 1.1.3 cửa sổ bám được có thể là cửa sổ toàn màn hình
     // (cây view rất lớn), không trần thì log ngập và máy chậm hẳn.
     if (!view || depth > 7 || self.dumpBudget <= 0) return;
     self.dumpBudget--;
@@ -283,8 +298,14 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     NSMutableDictionary *found = [NSMutableDictionary dictionary];
     found[@"strings"] = [NSMutableArray array];
     [self walkView:(UIView *)window into:found depth:0];
-    if (found[@"wifi"]) [self setSubviewsAlpha:found[@"wifi"] alpha:1.0];
-    if (found[@"cellular"]) [self setSubviewsAlpha:found[@"cellular"] alpha:1.0];
+    if (found[@"wifi"]) {
+        ((UIView *)found[@"wifi"]).alpha = 1.0;
+        [self setSubviewsAlpha:found[@"wifi"] alpha:1.0];
+    }
+    if (found[@"cellular"]) {
+        ((UIView *)found[@"cellular"]).alpha = 1.0;
+        [self setSubviewsAlpha:found[@"cellular"] alpha:1.0];
+    }
     for (UIView *sv in (NSArray *)found[@"strings"]) {
         sv.hidden = NO;
         NSString *orig = objc_getAssociatedObject(sv, kFG5OriginalTextKey);
@@ -348,6 +369,23 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     UIView *cellular = found[@"cellular"];
     NSArray *strings = found[@"strings"];
 
+    // Chiều cao THANH TRẠNG THÁI thật + profile — tính trước vòng nhận diện
+    // nhà mạng vì nhận diện theo vị trí cần sbH. Sửa ở 1.1.3: KHÔNG lấy
+    // chiều cao cửa sổ nữa (cửa sổ chứa thanh cao bằng cả màn hình, 844,
+    // làm dải dự phòng của 1.1.2 rơi xuống giữa màn hình — ảnh máy thật
+    // 26/11). safeTop: tai thỏ 47, Island 59, cổ điển 0 → lấy 20.
+    CGFloat sbH = window.safeAreaInsets.top;
+    if (sbH <= 0) sbH = 20;
+    NSInteger profile = [self effectiveProfileForWindow:window];
+    CGFloat fontSize = 12, labelMaxW = 64, carrierMaxW = 120;
+    FG5ParamsForProfile(profile, &fontSize, &labelMaxW, &carrierMaxW);
+    if (!self.loggedProfile) {
+        self.loggedProfile = YES;
+        FG5Log(@"profile: %@ (pref='%@', cua so %@, safeTop=%.0f)",
+               FG5ProfileName(profile), gLayoutPref,
+               NSStringFromCGSize(window.bounds.size), window.safeAreaInsets.top);
+    }
+
     // Nhận diện StringView của nhà mạng / "Không có SIM" + ghi log chữ lạ 1 lần
     UIView *serviceView = nil;
     UIColor *contentColor = nil;
@@ -360,7 +398,30 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             FG5Log(@"StringView text='%@' frame=%@", text, NSStringFromCGRect(sv.frame));
         }
         NSNumber *marked = objc_getAssociatedObject(sv, kFG5ServiceViewKey);
-        if (FG5IsNoSimText(text) || [marked boolValue]) {
+        BOOL claim = FG5IsNoSimText(text) || [marked boolValue];
+        if (!claim && [text isKindOfClass:[NSString class]] && text.length > 0 &&
+            ![text containsString:@":"]) {
+            // Nhận diện theo VỊ TRÍ (1.1.3): máy có SIM thì view nhà mạng
+            // mang tên nhà mạng thật (vd MobiFone) nên nhận diện theo chữ
+            // "Không có SIM" không bắt được — log 1.1.2 đã chứng minh view
+            // đó tồn tại mà không được nhận. View chữ nằm trong dải trạng
+            // thái + ở nửa trái của thanh + chữ không phải giờ (giờ có
+            // dấu :) → chính là view nhà mạng/dịch vụ.
+            CGRect wr = [sv convertRect:sv.bounds toView:window];
+            if (wr.origin.y < sbH &&
+                CGRectGetMidX(wr) < window.bounds.size.width * 0.45) {
+                claim = YES;
+                objc_setAssociatedObject(sv, kFG5ServiceViewKey, @YES,
+                                         OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                if (objc_getAssociatedObject(sv, kFG5OriginalTextKey) == nil) {
+                    objc_setAssociatedObject(sv, kFG5OriginalTextKey, text,
+                                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                }
+                FG5Log(@"nhan dien view nha mang theo vi tri: '%@' rect=%@",
+                       text, NSStringFromCGRect(wr));
+            }
+        }
+        if (claim) {
             serviceView = sv;
             if (text.length > 0 && !FG5IsNoSimText(text) &&
                 objc_getAssociatedObject(sv, kFG5OriginalTextKey) == nil) {
@@ -382,16 +443,6 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     }
     if (!contentColor) contentColor = [self statusBarContentColorNearView:nil fallbackWindow:window];
 
-    CGFloat sbH = window.bounds.size.height;
-    NSInteger profile = [self effectiveProfileForWindow:window];
-    CGFloat fontSize = 12, labelMaxW = 64, carrierMaxW = 120;
-    FG5ParamsForProfile(profile, &fontSize, &labelMaxW, &carrierMaxW);
-    if (!self.loggedProfile) {
-        self.loggedProfile = YES;
-        FG5Log(@"profile: %@ (pref='%@', cua so %@, safeTop=%.0f)",
-               FG5ProfileName(profile), gLayoutPref,
-               NSStringFromCGSize(window.bounds.size), window.safeAreaInsets.top);
-    }
     // Dải dọc dự phòng khi không có view neo: cổ điển dùng cả chiều cao 20pt,
     // tai thỏ/Island canh giữa vùng tai bằng dải 20pt giữa cửa sổ
     CGFloat bandY = (profile == 0) ? 0 : MAX(0, (sbH - 20) / 2.0);
@@ -399,6 +450,10 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 
     // — Nhãn thay icon Wi-Fi —
     if (wifi) {
+        // Ẩn cả CHÍNH view icon (1.1.3): chỉ ẩn view con như trước không đủ —
+        // icon Wi-Fi tự vẽ một phần hình ở lớp của chính nó nên vẫn hằn mờ
+        // sau nhãn (ảnh máy thật 26/11).
+        wifi.alpha = 0.0;
         [self setSubviewsAlpha:wifi alpha:0.0];
         if (!self.wifiLabel) {
             self.wifiLabel = [[UILabel alloc] init];
@@ -407,7 +462,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             self.wifiLabel.minimumScaleFactor = 0.6;
             [window addSubview:self.wifiLabel];
         }
-        self.wifiLabel.font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold];
+        self.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *label = FG5EffectiveLabel();
         self.wifiLabel.text = label;
         self.wifiLabel.textColor = contentColor;
@@ -430,7 +485,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             self.wifiLabel.minimumScaleFactor = 0.6;
             [window addSubview:self.wifiLabel];
         }
-        self.wifiLabel.font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold];
+        self.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *label = FG5EffectiveLabel();
         self.wifiLabel.text = label;
         self.wifiLabel.textColor = contentColor;
@@ -464,6 +519,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             [window addSubview:self.barsView];
         }
         if (cellular) {
+            cellular.alpha = 0.0;
             [self setSubviewsAlpha:cellular alpha:0.0];
             barsRect = [cellular convertRect:cellular.bounds toView:window];
             if (barsRect.size.width < 14) barsRect.size.width = 18;
@@ -497,7 +553,10 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         [window bringSubviewToFront:self.barsView];
     } else {
         self.barsView.hidden = YES;
-        if (cellular) [self setSubviewsAlpha:cellular alpha:1.0];
+        if (cellular) {
+            cellular.alpha = 1.0;
+            [self setSubviewsAlpha:cellular alpha:1.0];
+        }
     }
 
     // — Tên nhà mạng —
@@ -525,7 +584,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             self.carrierLabel.minimumScaleFactor = 0.6;
             [window addSubview:self.carrierLabel];
         }
-        self.carrierLabel.font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold];
+        self.carrierLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *carrier = FG5EffectiveCarrier();
         self.carrierLabel.text = carrier;
         self.carrierLabel.textColor = contentColor;

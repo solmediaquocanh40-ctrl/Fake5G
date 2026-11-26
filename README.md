@@ -1,4 +1,4 @@
-# Fake5G 1.1.2 — com.anhdang.fake5g
+# Fake5G 1.1.3 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -14,12 +14,30 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
 
+## 1.1.3 — sửa theo ảnh + log 1.1.2 (máy thật 26/11/2026)
+
+1. **Chữ nhà mạng bay giữa màn hình**: dải dự phòng tính chiều cao từ
+   chiều cao cửa sổ (844) thay vì chiều cao thanh trạng thái — đã sửa lấy
+   theo safeTop (tai thỏ 47). Đồng thời **nhận diện view nhà mạng theo vị
+   trí** (trong dải trạng thái, nửa trái, không phải chữ giờ): máy có SIM
+   (chữ là tên nhà mạng thật như MobiFone) giờ cũng được thay chữ ngay
+   trên view thật như máy không SIM, không cần nhãn dự phòng nữa.
+2. **Icon Wi-Fi còn hằn mờ sau chữ 5G**: trước chỉ ẩn các view con của
+   icon; nay ẩn cả chính view icon Wi-Fi và view vạch sóng (khôi phục đầy
+   đủ khi tắt tweak).
+3. **Font nhãn**: lấy font thật từ view chữ của thanh trạng thái (đúng
+   font SF hệ thống đang dùng), không tự chọn font nữa.
+
+Đã kiểm chứng trên máy thật ở 1.1.2: bám đúng thanh trạng thái thật
+trong SBCoverSheetWindow (chuỗi view cha trong log), nhãn 5G đúng vị
+trí, profile tai thỏ đúng.
+
 ## 1.1.2 — sửa lỗi chọn cửa sổ (log 1.1.1, máy thật 26/11/2026)
 
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.2 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.3 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

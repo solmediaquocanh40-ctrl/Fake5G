@@ -1,4 +1,4 @@
-# Fake5G 1.0.0 — com.anhdang.fake5g
+# Fake5G 1.1.1 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,36 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.1 — sửa 2 lỗi từ máy thật (log 26/11/2026, iPhone 12 Pro)
+
+1. **Thanh trạng thái không đổi gì** (bản đã cài trên máy): hàm chọn cửa sổ
+   bắt nhầm `SBStatusBarReusePoolWindow` — kho chứa thanh trạng thái tái sử
+   dụng, khung bằng cả màn hình và rỗng — nên không bao giờ tìm thấy icon
+   Wi-Fi. Đã sửa: loại thẳng ReusePool, chỉ xét cửa sổ cao ≤70pt, quét mọi
+   cửa sổ và bám theo cửa sổ chứa view trạng thái thật; log ghi rõ cửa sổ
+   đã bám.
+2. **Trang chọn Chữ hiển thị / Số vạch sóng / Tên nhà mạng đen thui**: các
+   mục `PSLinkListCell` trong Root.plist thiếu khoá
+   `detail = PSListItemsController` (mọi bundle chạy tốt đều có). Đã bổ sung
+   cho cả 4 mục danh sách.
+
+## Khung màn hình (profile)
+
+Mục **Cài đặt → Fake5G → Dòng máy** cho chọn profile theo đời máy, máy nào
+cũng chọn được:
+
+- **Tự động** (mặc định): nhận diện theo chiều cao vùng trạng thái —
+  ≤24pt cổ điển, 44–47pt tai thỏ, ≥52pt Dynamic Island.
+- **Cổ điển (nút Home)**: iPhone 8/7/6s, SE — thanh trạng thái 20pt.
+- **Tai thỏ**: iPhone X, XS, 11, 12, 13, 14 — nhãn/sóng nằm trong tai phải,
+  cỡ chữ gọn hơn, không lấn vùng giữa.
+- **Dynamic Island**: iPhone 14 Pro, 15, 16 — như tai thỏ nhưng tai rộng hơn.
+
+Mọi profile đều canh nhãn và vạch sóng theo **khung thật của icon gốc** trên
+chính máy đó (vị trí + dải dọc), profile chỉ chỉnh cỡ chữ, độ rộng tối đa và
+vị trí dự phòng. Profile đã nhận diện được ghi vào log kèm kích thước cửa sổ
+để đối chiếu.
 
 ## Bản quyền (đúng mẫu ZUS)
 
@@ -46,7 +76,7 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 (macos-latest, 3 scheme rootless/rootful/roothide). Máy iPhone 8 + Dopamine
 thì cài bản **rootless**.
 
-## Checklist test trên máy thật (1.0.0 là bản tĩnh, chưa test máy)
+## Checklist test trên máy thật (bản tĩnh, chưa test máy)
 
 1. Cài .deb rootless → respring → mở Cài đặt: có mục **Fake5G** không?
 2. Thanh trạng thái: icon Wi-Fi đã thành chữ **5G** chưa? Có vạch sóng + tên
@@ -54,6 +84,9 @@ thì cài bản **rootless**.
 3. Đổi nhãn sang 4G / tự nhập chữ khác, đổi tên nhà mạng, đổi số vạch:
    có áp dụng ngay không?
 4. Trang Cài đặt → mục Bản quyền hiện "Đang dùng thử — còn 3 ngày"?
-5. Gửi lại file `/var/mobile/Documents/Fake5G.log` nếu có mục nào chưa chạy —
-   trong log đã có sẵn dump cây thanh trạng thái để vòng sau chỉnh đúng class
-   của iOS 16.7.12.
+5. Mục **Dòng máy**: để Tự động trước; nếu lệch, chọn tay đúng dòng máy rồi
+   xem lại. Test thêm trên iPhone tai thỏ (12 Pro) nếu có: nhãn 5G trong tai
+   phải có đè lên pin/giờ không, tên nhà mạng có lấn vùng giữa không?
+6. Gửi lại file `/var/mobile/Documents/Fake5G.log` nếu có mục nào chưa chạy —
+   trong log đã có sẵn dump cây thanh trạng thái + profile đã nhận diện để
+   vòng sau chỉnh đúng class/khung của từng đời máy.

@@ -1,4 +1,4 @@
-// FG5License.m — Fake5G 1.0.0
+// FG5License.m — Fake5G 1.1.1
 // Gồm: tiện ích prefs + log dùng chung (FG5Shared) và hệ bản quyền (FG5License).
 #import "FG5Shared.h"
 #import "FG5License.h"

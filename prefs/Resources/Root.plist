@@ -48,6 +48,44 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>KHUNG MÀN HÌNH</string>
+			<key>footerText</key>
+			<string>Tự động nhận diện theo chiều cao thanh trạng thái. Nếu máy nào hiện lệch, chọn tay đúng dòng máy của mình: Cổ điển = iPhone 8/7/6s và SE có nút Home; Tai thỏ = iPhone X, XS, 11, 12, 13, 14; Dynamic Island = iPhone 14 Pro, 15, 16.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>default</key>
+			<string>auto</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>layoutProfile</string>
+			<key>label</key>
+			<string>Dòng máy</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>auto</string>
+				<string>classic</string>
+				<string>notch</string>
+				<string>island</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Tự động</string>
+				<string>Cổ điển (nút Home)</string>
+				<string>Tai thỏ</string>
+				<string>Dynamic Island</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>NHÃN THAY ICON WI-FI</string>
 			<key>footerText</key>
 			<string>Ô tự nhập có chữ thì dùng ô tự nhập. Chữ dài quá 6–8 ký tự sẽ chật trên thanh trạng thái.</string>
@@ -55,6 +93,8 @@
 		<dict>
 			<key>cell</key>
 			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
 			<key>default</key>
 			<string>5G</string>
 			<key>defaults</key>
@@ -139,6 +179,8 @@
 		<dict>
 			<key>cell</key>
 			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
 			<key>default</key>
 			<string>4</string>
 			<key>defaults</key>
@@ -181,6 +223,8 @@
 		<dict>
 			<key>cell</key>
 			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
 			<key>default</key>
 			<string>Viettel</string>
 			<key>defaults</key>
@@ -242,7 +286,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Fake5G 1.0.0 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
+			<string>Fake5G 1.1.1 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
 		</dict>
 		<dict>
 			<key>cell</key>

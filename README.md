@@ -1,4 +1,4 @@
-# Fake5G 1.1.4 — com.anhdang.fake5g
+# Fake5G 1.1.5 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,21 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.5 — quét dày hơn + mở cả kho ReusePool + bản đồ điểm
+
+Log máy thật của 1.1.4: engine đa bề mặt CHẠY (bắt được thanh trong
+SBMainSwitcherWindow, prefs có switcher=1) nhưng suốt phiên đó các lần
+quét chỉ thấy view trạng thái trong cửa sổ switcher — cửa sổ màn hình
+khóa và màn hình chính đều 0 điểm. Hai điểm mù của 1.1.4: (1) chỉ quét
+lại mỗi 10 giây nên dễ trượt khoảnh khắc một thanh được dựng; (2) bỏ
+qua hẳn cửa sổ SBStatusBarReusePoolWindow. Bản này: quét mỗi 3 giây,
+tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do quet:`
+bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
+đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
+hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
+trong gói 1.1.4/1.1.5 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
 
@@ -53,7 +68,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.4 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.5 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

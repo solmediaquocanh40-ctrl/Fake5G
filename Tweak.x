@@ -1,4 +1,4 @@
-// Tweak.x — Fake5G 1.1.4 (com.anhdang.fake5g)
+// Tweak.x — Fake5G 1.1.5 (com.anhdang.fake5g)
 // Giả hiển thị trên thanh trạng thái: thay icon Wi-Fi bằng nhãn chữ tuỳ chọn
 // (4G/5G/tự nhập), hiện vạch sóng giả + tên nhà mạng giả cho máy không SIM,
 // ẩn chữ "Không có SIM". Chỉ giả HIỂN THỊ — kết nối thật giữ nguyên 100%.
@@ -80,6 +80,7 @@ static BOOL FG5IsNoSimText(NSString *text) {
 @property (nonatomic, assign) NSInteger tickCount;
 @property (nonatomic, strong) NSMutableDictionary<NSValue *, FG5Surface *> *surfaces;
 @property (nonatomic, strong) NSMutableSet<NSString *> *loggedTexts;
+@property (nonatomic, copy) NSString *lastScanSignature;
 - (void)start;
 - (void)tick;
 - (void)prefsChanged;
@@ -117,7 +118,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     self.loggedTexts = [NSMutableSet set];
     self.surfaces = [NSMutableDictionary dictionary];
     [self reloadPrefs];
-    FG5Log(@"Fake5G 1.1.4 khoi dong — ban quyen: %@", FG5LicenseStatusText());
+    FG5Log(@"Fake5G 1.1.5 khoi dong — ban quyen: %@", FG5LicenseStatusText());
     self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                   target:self
                                                 selector:@selector(tick)
@@ -209,14 +210,26 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 
 - (void)scanSurfaces {
     NSMutableSet<NSValue *> *seen = [NSMutableSet set];
+    NSMutableArray<NSString *> *sigParts = [NSMutableArray array];
     for (UIWindow *w in [self allWindows]) {
-        if (w.hidden || w.alpha < 0.01) continue;
         NSString *cls = NSStringFromClass([w class]);
-        if ([cls containsString:@"ReusePool"]) continue;
+        if (w.hidden || w.alpha < 0.01) {
+            [sigParts addObject:[NSString stringWithFormat:@"%@=AN", cls]];
+            continue;
+        }
         NSMutableDictionary *found = [NSMutableDictionary dictionary];
         found[@"strings"] = [NSMutableArray array];
         [self walkView:(UIView *)w into:found depth:0];
-        if ([self scoreForFound:found] == 0) continue;
+        NSInteger score = [self scoreForFound:found];
+        // Bản đồ điểm của MỌI cửa sổ (kể cả kho ReusePool — 1.1.4 bỏ qua
+        // kho này nên mù hẳn nếu thanh màn hình chính đang nằm ở đó).
+        // Chỉ ghi log khi bản đồ thay đổi để khỏi ngập file.
+        [sigParts addObject:[NSString stringWithFormat:@"%@=%ld(w%@,c%@,s%lu)",
+                             cls, (long)score,
+                             found[@"wifi"] ? @"1" : @"0",
+                             found[@"cellular"] ? @"1" : @"0",
+                             (unsigned long)((NSArray *)found[@"strings"]).count]];
+        if (score == 0) continue;
         NSValue *key = [NSValue valueWithNonretainedObject:w];
         [seen addObject:key];
         FG5Surface *surface = self.surfaces[key];
@@ -241,6 +254,11 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             if (surface.applied) [self restoreSurface:surface];
             [self.surfaces removeObjectForKey:key];
         }
+    }
+    NSString *sig = [sigParts componentsJoinedByString:@" "];
+    if (![sig isEqualToString:self.lastScanSignature]) {
+        self.lastScanSignature = sig;
+        FG5Log(@"ban do quet: %@", sig);
     }
     if (self.surfaces.count == 0 && !self.loggedWindows) {
         self.loggedWindows = YES;
@@ -363,7 +381,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     for (FG5Surface *s in [self.surfaces allValues]) {
         if (!s.window || (s.wifi && s.wifi.window != s.window)) stale = YES;
     }
-    if (stale || self.surfaces.count == 0 || self.tickCount % 10 == 0) {
+    if (stale || self.surfaces.count == 0 || self.tickCount % 3 == 0) {
         [self scanSurfaces];
     }
     for (FG5Surface *surface in [self.surfaces allValues]) {

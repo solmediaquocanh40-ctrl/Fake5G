@@ -1,4 +1,4 @@
-// FG5RootListController.m — Fake5G 1.1.4
+// FG5RootListController.m — Fake5G 1.1.5
 // Trang Cài đặt của Fake5G. Từ 1.1.4 theo yêu cầu của anh Quoc: CHƯA kích
 // hoạt key thì không vào được phần điều chỉnh — mở trang lên là phủ mờ +
 // hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm

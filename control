@@ -1,6 +1,6 @@
 Package: com.anhdang.fake5g
 Name: Fake5G
-Version: 1.1.4
+Version: 1.1.5
 Architecture: iphoneos-arm
 Description: Giả hiển thị thanh trạng thái: thay icon Wi-Fi bằng nhãn 4G/5G (hoặc chữ tự nhập), hiện vạch sóng giả và tên nhà mạng tự viết cho máy không SIM, ẩn chữ Không có SIM. Chỉ thay hiển thị, kết nối thật giữ nguyên. Dùng thử 3 ngày, kích hoạt bằng key.
 Maintainer: Anh Dang

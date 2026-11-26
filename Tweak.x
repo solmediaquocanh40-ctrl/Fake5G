@@ -1,4 +1,9 @@
-// Tweak.x — Fake5G 1.1.9 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+// Tweak.x — Fake5G 1.1.10 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+//
+// BẢN 1.1.10: sửa Reset phía prefs (ghi mặc định qua setPreferenceValue
+// thay vì xoá key trần — bản 1.1.9 bị trang Cài đặt ghi ngược ô gạt Bật
+// thành ON) + đổi tên icon PreferenceLoader icon.png → Fake5GPrefs.png.
+// File này chỉ đổi số bản; phần lõi giữ nguyên như 1.1.9 dưới đây.
 //
 // BẢN 1.1.9 (theo các mục anh Quoc chốt 26/11):
 //   1. MẶC ĐỊNH TẮT: cài mới xong tweak nằm im (enabled mặc định false ở cả
@@ -76,7 +81,7 @@
 
 #pragma mark - Trạng thái (nạp từ prefs)
 
-static BOOL gEnabled = NO; // 1.1.9: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
+static BOOL gEnabled = NO; // 1.1.10: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
 static BOOL gLicensed = NO;
 static BOOL gFakeBars = YES;
 static BOOL gFakeCarrier = YES;
@@ -169,7 +174,7 @@ static UIFont *FG5BorrowStatusFont(void) {
 }
 
 // Phát lại lệnh cập nhật cho CẢ 45 mục để tổng đài áp trạng thái đã ép.
-// (1.1.7 chỉ phát 0–10; 1.1.9 phát hết: độc chiếm cần dập cả giờ/pin, và
+// (1.1.7 chỉ phát 0–10; 1.1.10 phát hết: độc chiếm cần dập cả giờ/pin, và
 // khi prefs bị reset lúc đang độc chiếm thì mọi mục cũng phải được trả lại.)
 static void FG5RepublishItems(void) {
     if (!gAggregator) return;
@@ -235,7 +240,7 @@ static const void *kFG5WifiAlphaKey = &kFG5WifiAlphaKey;
 
 %end
 
-// ĐỘC CHIẾM LỚP 2 (1.1.9): ẩn nguyên cây thanh gốc. Giờ và pin gần như
+// ĐỘC CHIẾM LỚP 2 (1.1.10): ẩn nguyên cây thanh gốc. Giờ và pin gần như
 // không được tổng đài gọi lại _setItem sau khởi động nên ép ở nguồn không
 // đủ — ẩn thẳng view là chắc chắn. Đánh dấu bằng associated object để chỉ
 // khôi phục đúng những view mình đã ẩn.
@@ -377,7 +382,7 @@ static BOOL FG5WifiAssociated(void) {
                                                 selector:@selector(tick)
                                                 userInfo:nil
                                                  repeats:YES];
-    FG5Log(@"Fake5G 1.1.9 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
+    FG5Log(@"Fake5G 1.1.10 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
            gLayoutProfilePref, gExclusive, FG5WifiAssociated() ? @"co" : @"khong");
 }
 

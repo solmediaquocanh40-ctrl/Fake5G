@@ -1,4 +1,4 @@
-# Fake5G 1.1.9 — com.anhdang.fake5g
+# Fake5G 1.1.10 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,25 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.10 — sửa Reset (trang ghi ngược ô gạt) + đổi tên icon PreferenceLoader
+
+Máy thật 1.1.9 (log 20:35, 26/11): bấm Reset — key bị xoá, trang khoá
+lại, các ô chọn/ô nhập về mặc định (nhà mạng MobiFone → Viettel), nhưng
+thanh trạng thái vẫn chạy đồ giả. Dòng log ngay giây reset: tweak đọc
+`bat=1`. Nguyên nhân: fg5PerformReset xoá key trần trong prefs rồi
+reloadSpecifiers — ô gạt "Bật Fake5G" đang hiện trên trang bị trang
+Cài đặt ghi ngược giá trị ON của nó vào prefs, nên tweak tưởng vẫn
+đang bật và chạy tiếp bằng cấu hình mặc định.
+
+1. **Reset viết lại đúng cách**: ghi giá trị mặc định cho từng ô qua
+   đúng đường ghi của PSListController (`setPreferenceValue:specifier:`)
+   — ô trên màn hình và dữ liệu khớp nhau ngay, không còn đường ghi
+   ngược. Xoá key + giữ nguyên mốc thời gian kích hoạt như 1.1.9.
+2. **Đổi tên icon PreferenceLoader của chính Fake5G**: `icon.png` →
+   `Fake5GPrefs.png` (+ `@2x`, entry plist trỏ tên mới). Tên chung
+   `icon.png` trong thư mục dùng chung là mỏ neo xung đột dpkg cho
+   mọi package sau (vụ CallForward chiều 26/11 đá đúng file này).
 
 ## 1.1.9 — mặc định Tắt, None, màn khoá, vị trí cụm, Reset, độc chiếm 2 lớp
 
@@ -138,7 +157,7 @@ tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do qu
 bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
 đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
 hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
-trong gói 1.1.4/1.1.9 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+trong gói 1.1.4/1.1.10 nhưng app Cài đặt đang chạy giữ bundle cũ trong
 bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
@@ -180,7 +199,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.9 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.10 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

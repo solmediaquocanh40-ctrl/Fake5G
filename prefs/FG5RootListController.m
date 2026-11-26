@@ -1,4 +1,4 @@
-// FG5RootListController.m — Fake5G 1.1.9
+// FG5RootListController.m — Fake5G 1.1.10
 // Trang Cài đặt của Fake5G. Từ 1.1.4 theo yêu cầu của anh Quoc: CHƯA kích
 // hoạt key thì không vào được phần điều chỉnh — mở trang lên là phủ mờ +
 // hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
@@ -171,23 +171,44 @@ extern char **environ;
 }
 
 - (void)fg5PerformReset {
-    // Xoá toàn bộ khoá CÀI ĐẶT + key đã nhập. Các mốc thời gian bản quyền
-    // (trialStart / maxSeen / actStart / actKeyHash ở prefs + Keychain +
-    // file ẩn) CỐ Ý GIỮ NGUYÊN: hạn key tính từ lần kích hoạt đầu tiên.
-    NSArray<NSString *> *keys = @[
-        FG5_KEY_ENABLED, FG5_KEY_SHOW_IN_SWITCHER, FG5_KEY_SHOW_ON_LOCKSCREEN,
-        FG5_KEY_EXCLUSIVE_MODE, FG5_KEY_LAYOUT_PROFILE,
-        FG5_KEY_SIDE_CLASSIC, FG5_KEY_SIDE_NOTCH, FG5_KEY_SIDE_ISLAND,
-        FG5_KEY_LABEL_PRESET, FG5_KEY_LABEL_CUSTOM, FG5_KEY_ONLY_ON_WIFI,
-        FG5_KEY_FAKE_BARS, FG5_KEY_BARS_COUNT,
-        FG5_KEY_FAKE_CARRIER, FG5_KEY_CARRIER_PRESET, FG5_KEY_CARRIER_CUSTOM,
-        FG5_KEY_HIDE_NOSIM, FG5_KEY_LICENSE_KEY
-    ];
-    for (NSString *k in keys) FG5PrefSet(k, nil);
+    // Ghi giá trị mặc định qua ĐÚNG đường ghi của PSListController cho từng
+    // ô có key: trạng thái ô trên màn hình và dữ liệu khớp nhau ngay tại
+    // chỗ. Cách cũ (xoá key trần rồi reloadSpecifiers) bị trang ghi ngược
+    // giá trị ON của ô gạt đang hiện (Bật Fake5G) trở lại vào prefs — máy
+    // thật 1.1.10 chứng minh: reset xong tweak vẫn đọc bat=1, chạy tiếp
+    // bằng mặc định. Bảng mặc định này phải khớp Root.plist từng ô.
+    NSDictionary<NSString *, id> *defaults = @{
+        FG5_KEY_ENABLED: @NO,
+        FG5_KEY_SHOW_IN_SWITCHER: @YES,
+        FG5_KEY_SHOW_ON_LOCKSCREEN: @YES,
+        FG5_KEY_EXCLUSIVE_MODE: @NO,
+        FG5_KEY_LAYOUT_PROFILE: @"auto",
+        FG5_KEY_SIDE_CLASSIC: @"left",
+        FG5_KEY_SIDE_NOTCH: @"right",
+        FG5_KEY_SIDE_ISLAND: @"right",
+        FG5_KEY_LABEL_PRESET: @"5G",
+        FG5_KEY_LABEL_CUSTOM: @"",
+        FG5_KEY_ONLY_ON_WIFI: @YES,
+        FG5_KEY_FAKE_BARS: @YES,
+        FG5_KEY_BARS_COUNT: @"4",
+        FG5_KEY_FAKE_CARRIER: @YES,
+        FG5_KEY_CARRIER_PRESET: @"Viettel",
+        FG5_KEY_CARRIER_CUSTOM: @"",
+        FG5_KEY_HIDE_NOSIM: @YES
+    };
+    for (PSSpecifier *spec in [self specifiers]) {
+        NSString *k = [spec propertyForKey:@"key"];
+        id v = k ? defaults[k] : nil;
+        if (v) [self setPreferenceValue:v specifier:spec];
+    }
+    // Key đã nhập thì xoá thẳng (không phải ô trên trang nên không bị ghi
+    // ngược). Các mốc thời gian bản quyền (trialStart / maxSeen / actStart
+    // / actKeyHash ở prefs + Keychain + file ẩn) CỐ Ý GIỮ NGUYÊN: hạn key
+    // tính từ lần kích hoạt đầu tiên.
+    FG5PrefSet(FG5_KEY_LICENSE_KEY, nil);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          FG5_PREFS_CHANGED_NOTIFICATION, NULL, NULL, true);
-    FG5Log(@"prefs: RESET ve mac dinh (da xoa key, giu nguyen moc thoi gian)");
-    _specifiers = nil;
+    FG5Log(@"prefs: RESET ve mac dinh (ghi mac dinh qua trang, da xoa key, giu nguyen moc thoi gian)");
     [self reloadSpecifiers];
     // Hết key → trang khoá lại như lúc chưa kích hoạt (chạm để nhập lại key)
     if (!FG5LicenseHasActiveKey()) {

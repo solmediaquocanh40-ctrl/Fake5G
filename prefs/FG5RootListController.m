@@ -1,4 +1,4 @@
-// FG5RootListController.m — Fake5G 1.1.8
+// FG5RootListController.m — Fake5G 1.1.9
 // Trang Cài đặt của Fake5G. Từ 1.1.4 theo yêu cầu của anh Quoc: CHƯA kích
 // hoạt key thì không vào được phần điều chỉnh — mở trang lên là phủ mờ +
 // hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
@@ -154,6 +154,52 @@ extern char **environ;
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
     self.popupEditing = NO;
+}
+
+#pragma mark - Reset về mặc định
+
+- (void)resetTapped:(id)sender {
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:@"Reset về mặc định"
+                         message:@"Toàn bộ cài đặt sẽ trở về mặc định và key đã kích hoạt sẽ bị xoá — phải nhập lại key mới dùng tiếp.\nThời gian kích hoạt của key vẫn tính từ lần nhập đầu tiên, dùng thử không chạy lại."
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Huỷ" style:UIAlertActionStyleCancel handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive
+        handler:^(UIAlertAction *action) { [weakSelf fg5PerformReset]; }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)fg5PerformReset {
+    // Xoá toàn bộ khoá CÀI ĐẶT + key đã nhập. Các mốc thời gian bản quyền
+    // (trialStart / maxSeen / actStart / actKeyHash ở prefs + Keychain +
+    // file ẩn) CỐ Ý GIỮ NGUYÊN: hạn key tính từ lần kích hoạt đầu tiên.
+    NSArray<NSString *> *keys = @[
+        FG5_KEY_ENABLED, FG5_KEY_SHOW_IN_SWITCHER, FG5_KEY_SHOW_ON_LOCKSCREEN,
+        FG5_KEY_EXCLUSIVE_MODE, FG5_KEY_LAYOUT_PROFILE,
+        FG5_KEY_SIDE_CLASSIC, FG5_KEY_SIDE_NOTCH, FG5_KEY_SIDE_ISLAND,
+        FG5_KEY_LABEL_PRESET, FG5_KEY_LABEL_CUSTOM, FG5_KEY_ONLY_ON_WIFI,
+        FG5_KEY_FAKE_BARS, FG5_KEY_BARS_COUNT,
+        FG5_KEY_FAKE_CARRIER, FG5_KEY_CARRIER_PRESET, FG5_KEY_CARRIER_CUSTOM,
+        FG5_KEY_HIDE_NOSIM, FG5_KEY_LICENSE_KEY
+    ];
+    for (NSString *k in keys) FG5PrefSet(k, nil);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         FG5_PREFS_CHANGED_NOTIFICATION, NULL, NULL, true);
+    FG5Log(@"prefs: RESET ve mac dinh (da xoa key, giu nguyen moc thoi gian)");
+    _specifiers = nil;
+    [self reloadSpecifiers];
+    // Hết key → trang khoá lại như lúc chưa kích hoạt (chạm để nhập lại key)
+    if (!FG5LicenseHasActiveKey()) {
+        [self installExpiredOverlay];
+        self.popupShownThisAppear = YES;
+    }
+    UIAlertController *done = [UIAlertController
+        alertControllerWithTitle:@"Đã reset"
+                         message:@"Mọi cài đặt đã về mặc định và key đã bị xoá. Nhập lại key để dùng tiếp."
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [done addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:done animated:YES completion:nil];
 }
 
 #pragma mark - Respring

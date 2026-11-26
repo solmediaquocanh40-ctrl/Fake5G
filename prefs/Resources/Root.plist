@@ -28,13 +28,13 @@
 			<key>label</key>
 			<string>BẬT / TẮT</string>
 			<key>footerText</key>
-			<string>Bật tweak là thanh trạng thái đổi ngay, không cần respring. Hết hạn dùng thử, mở trang này sẽ hiện popup nhập key.</string>
+			<string>Cài mới xong tweak CHƯA bật — bật công tắc này lên mới dùng. Bật là thanh trạng thái đổi ngay, không cần respring. Hết hạn dùng thử, mở trang này sẽ hiện popup nhập key.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>default</key>
-			<true/>
+			<false/>
 			<key>defaults</key>
 			<string>com.anhdang.fake5g</string>
 			<key>key</key>
@@ -56,7 +56,21 @@
 			<key>label</key>
 			<string>Hiện trong App Switcher</string>
 			<key>PostNotification</key>
-			<string>com.anhdang.fake5g/ReloadPrefs</string>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>showOnLockScreen</string>
+			<key>label</key>
+			<string>Hiện ở màn hình khoá</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -122,9 +136,95 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>VỊ TRÍ CỤM GIẢ</string>
+			<key>footerText</key>
+			<string>Chọn cụm giả (vạch sóng + nhãn + nhà mạng) nằm bên Trái hay bên Phải cho từng dòng máy. Tai thỏ / Dynamic Island chọn Trái thì cụm nằm ở hàng 2 dưới giờ (hàng 1 là chỗ của giờ gốc).</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>default</key>
+			<string>left</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>sideClassic</string>
+			<key>label</key>
+			<string>Cổ điển (nút Home)</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>left</string>
+				<string>right</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Trái</string>
+				<string>Phải</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>default</key>
+			<string>right</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>sideNotch</string>
+			<key>label</key>
+			<string>Tai thỏ</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>left</string>
+				<string>right</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Trái</string>
+				<string>Phải</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>default</key>
+			<string>right</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>sideIsland</string>
+			<key>label</key>
+			<string>Dynamic Island</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>left</string>
+				<string>right</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Trái</string>
+				<string>Phải</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>NHÃN THAY ICON WI-FI</string>
 			<key>footerText</key>
-			<string>Ô tự nhập có chữ thì dùng ô tự nhập. Chữ dài quá 6–8 ký tự sẽ chật trên thanh trạng thái.</string>
+			<string>Chọn None (trống) là ẩn hẳn nhãn, thắng cả ô tự nhập. Ô tự nhập có chữ thì dùng ô tự nhập. Chữ dài quá 6–8 ký tự sẽ chật trên thanh trạng thái.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -143,6 +243,7 @@
 			<string>com.anhdang.fake5g/prefsChanged</string>
 			<key>validValues</key>
 			<array>
+				<string>none</string>
 				<string>4G</string>
 				<string>5G</string>
 				<string>5G+</string>
@@ -152,6 +253,7 @@
 			</array>
 			<key>validTitles</key>
 			<array>
+				<string>None (trống)</string>
 				<string>4G</string>
 				<string>5G</string>
 				<string>5G+</string>
@@ -196,7 +298,7 @@
 			<key>label</key>
 			<string>SÓNG SIM GIẢ (MÁY KHÔNG SIM)</string>
 			<key>footerText</key>
-			<string>Tên nhà mạng tự nhập có chữ thì dùng tên tự nhập. Tên dài quá ~12 ký tự sẽ bị chật.</string>
+			<string>Chọn None (trống) ở Số vạch sóng / Tên nhà mạng là ẩn hẳn mục đó. Tên nhà mạng tự nhập có chữ thì dùng tên tự nhập. Tên dài quá ~12 ký tự sẽ bị chật.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -229,6 +331,7 @@
 			<string>com.anhdang.fake5g/prefsChanged</string>
 			<key>validValues</key>
 			<array>
+				<string>none</string>
 				<string>1</string>
 				<string>2</string>
 				<string>3</string>
@@ -236,6 +339,7 @@
 			</array>
 			<key>validTitles</key>
 			<array>
+				<string>None (trống)</string>
 				<string>1 vạch</string>
 				<string>2 vạch</string>
 				<string>3 vạch</string>
@@ -273,6 +377,7 @@
 			<string>com.anhdang.fake5g/prefsChanged</string>
 			<key>validValues</key>
 			<array>
+				<string>none</string>
 				<string>Viettel</string>
 				<string>VinaPhone</string>
 				<string>MobiFone</string>
@@ -281,6 +386,7 @@
 			</array>
 			<key>validTitles</key>
 			<array>
+				<string>None (trống)</string>
 				<string>Viettel</string>
 				<string>VinaPhone</string>
 				<string>MobiFone</string>
@@ -322,7 +428,23 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Fake5G 1.1.8 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
+			<string>Fake5G 1.1.9 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>ĐẶT LẠI</string>
+			<key>footerText</key>
+			<string>Reset đưa mọi cài đặt về mặc định và XOÁ key đã kích hoạt — phải nhập lại key mới dùng tiếp. Thời gian kích hoạt của key vẫn tính từ lần nhập đầu tiên (reset không kéo dài được hạn), thời gian dùng thử cũng không chạy lại.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Reset về mặc định</string>
+			<key>action</key>
+			<string>resetTapped:</string>
 		</dict>
 		<dict>
 			<key>cell</key>

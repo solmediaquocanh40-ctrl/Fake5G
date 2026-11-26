@@ -1,4 +1,4 @@
-# Fake5G 1.1.8 — com.anhdang.fake5g
+# Fake5G 1.1.9 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,43 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.9 — mặc định Tắt, None, màn khoá, vị trí cụm, Reset, độc chiếm 2 lớp
+
+Theo các mục anh Quoc chốt tối 26/11 sau khi test 1.1.8:
+
+1. **Mặc định TẮT khi cài mới**: công tắc "Bật Fake5G" mặc định Tắt ở cả
+   trang Cài đặt lẫn fallback trong code — cài xong tweak nằm im, vào
+   Cài đặt bật lên mới dùng. Đồng hồ dùng thử vẫn đếm từ lần chạy đầu.
+2. **Tuỳ chọn "None (trống)"**: thêm làm dòng ĐẦU TIÊN cho Chữ hiển thị /
+   Số vạch sóng / Tên nhà mạng. Chọn None là mục đó ẩn hẳn — thắng cả ô
+   tự nhập.
+3. **Công tắc "Hiện ở màn hình khoá"** (mặc định Bật): tweak theo dõi
+   trạng thái khoá máy (Darwin notify lockstate) mỗi giây; khoá máy +
+   công tắc tắt thì dải giả ẩn ở màn hình khoá. (Đồng thời sửa luôn
+   PostNotification của công tắc App Switcher: trước ghi nhầm
+   ReloadPrefs nên đổi nó không ăn ngay.)
+4. **Vị trí cụm giả theo dòng máy** (Cài đặt → VỊ TRÍ CỤM GIẢ): Cổ điển /
+   Tai thỏ / Dynamic Island mỗi dòng một lựa chọn Trái/Phải (mặc định:
+   Cổ điển = Trái, Tai thỏ/Island = Phải). Tai thỏ chọn Trái thì cả cụm
+   [vạch][nhãn][nhà mạng] nằm ở hàng 2 dưới giờ gốc (hàng 1 là của giờ).
+5. **Nút "Reset về mặc định"** (cuối trang Cài đặt, có popup xác nhận):
+   xoá toàn bộ cài đặt + xoá key đã nhập (phải nhập lại mới dùng tiếp),
+   nhưng GIỮ NGUYÊN các mốc thời gian ở cả 3 nơi lưu — mốc kích hoạt
+   nay gắn với dấu vân của chính key đó: nay nhập key, reset, mai nhập
+   lại thì hạn vẫn tính từ hôm nay; dùng thử cũng không chạy lại.
+6. **Cổ điển trên máy tai thỏ**: dùng chiều cao dải thật (safeArea top)
+   và neo giữa dải — sửa cảnh cụm bị ép vào dải 20pt sát mép trên,
+   tách rời khỏi giờ gốc như 1.1.8.
+7. **Độc chiếm 2 lớp**: lớp 1 — mỗi giây phát lại lệnh ẩn cả 45 mục qua
+   aggregator (mục nào hệ thống tự bật lại cũng bị dập); lớp 2 — hook
+   ẩn nguyên cây thanh gốc (UIStatusBar_Modern/_UIStatusBar) khi độc
+   chiếm, vì giờ và pin gần như không được aggregator gọi lại _setItem
+   sau khởi động (chính HideStatusBarItemsPro cũng ghi chú mục giờ
+   "not working" qua đường đó). Phát lại lệnh nay phủ cả 45 mục ở mọi
+   lần prefs đổi (trước chỉ 0–10) để tắt độc chiếm/reset là thanh gốc
+   trở lại đủ. Pin độc chiếm: log "pin: xx%" mỗi khi % đổi và hiện
+   "--" khi đọc lỗi thay vì mất hút.
 
 ## 1.1.8 — sửa bố cục tai thỏ + dò Wi-Fi mới + chế độ độc chiếm
 
@@ -101,7 +138,7 @@ tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do qu
 bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
 đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
 hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
-trong gói 1.1.4/1.1.8 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+trong gói 1.1.4/1.1.9 nhưng app Cài đặt đang chạy giữ bundle cũ trong
 bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
@@ -143,7 +180,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.8 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.9 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

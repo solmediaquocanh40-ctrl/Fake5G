@@ -1,8 +1,9 @@
-// FG5License.m — Fake5G 1.1.8
+// FG5License.m — Fake5G 1.1.9
 // Gồm: tiện ích prefs + log dùng chung (FG5Shared) và hệ bản quyền (FG5License).
 #import "FG5Shared.h"
 #import "FG5License.h"
 #import <Security/Security.h>
+#import <CommonCrypto/CommonDigest.h>
 
 #pragma mark - Log + prefs dùng chung
 
@@ -64,6 +65,8 @@ void FG5PrefSet(NSString *key, id value) {
 }
 
 NSString *FG5EffectiveLabel(void) {
+    // Chọn "none" thì ẩn hẳn — thắng cả ô tự nhập (yêu cầu của anh Quoc, 1.1.9)
+    if ([FG5PrefString(FG5_KEY_LABEL_PRESET, @"5G") isEqualToString:@"none"]) return @"";
     NSString *custom = [FG5PrefString(FG5_KEY_LABEL_CUSTOM, @"")
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (custom.length > 0) return custom;
@@ -71,6 +74,7 @@ NSString *FG5EffectiveLabel(void) {
 }
 
 NSString *FG5EffectiveCarrier(void) {
+    if ([FG5PrefString(FG5_KEY_CARRIER_PRESET, @"Viettel") isEqualToString:@"none"]) return @"";
     NSString *custom = [FG5PrefString(FG5_KEY_CARRIER_CUSTOM, @"")
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (custom.length > 0) return custom;
@@ -78,6 +82,7 @@ NSString *FG5EffectiveCarrier(void) {
 }
 
 NSInteger FG5EffectiveBarsCount(void) {
+    if ([FG5PrefString(FG5_KEY_BARS_COUNT, @"4") isEqualToString:@"none"]) return 0;
     NSInteger n = [FG5PrefString(FG5_KEY_BARS_COUNT, @"4") integerValue];
     if (n < 1) n = 1;
     if (n > 4) n = 4;
@@ -86,12 +91,24 @@ NSInteger FG5EffectiveBarsCount(void) {
 
 #pragma mark - Kho 3 nơi cho mốc bản quyền (prefs + Keychain + file)
 
-// Chuỗi trạng thái dạng "start|maxSeen|actStart" (giây unix, 0 = chưa có)
+// Dấu vân của một key (SHA-256 rút gọn) — để mốc kích hoạt GẮN với đúng key:
+// reset xoá key nhưng mốc + dấu vân còn nguyên ở 3 nơi, nhập lại CÙNG key thì
+// hạn vẫn tính từ lần kích hoạt đầu tiên của key đó (yêu cầu của anh, 1.1.9).
+static NSString *FG5KeyHash(NSString *key) {
+    NSData *d = [[key uppercaseString] dataUsingEncoding:NSUTF8StringEncoding];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(d.bytes, (CC_LONG)d.length, digest);
+    NSMutableString *hex = [NSMutableString stringWithCapacity:16];
+    for (int i = 0; i < 8; i++) [hex appendFormat:@"%02x", digest[i]];
+    return hex;
+}
+
+// Chuỗi trạng thái dạng "start|maxSeen|actStart|actKeyHash" (giây unix, 0 = chưa có)
 static NSString *FG5StateFilePath(void) {
     return @"/var/mobile/Documents/.fg5state";
 }
 
-static void FG5ParseStateString(NSString *s, NSTimeInterval *start, NSTimeInterval *maxSeen, NSTimeInterval *act) {
+static void FG5ParseStateString(NSString *s, NSTimeInterval *start, NSTimeInterval *maxSeen, NSTimeInterval *act, NSString **actHash) {
     if (![s isKindOfClass:[NSString class]] || s.length == 0) return;
     NSArray<NSString *> *parts = [s componentsSeparatedByString:@"|"];
     // start lấy mốc SỚM nhất trong các nơi (chống xoá 1 nơi để reset dùng thử)
@@ -99,8 +116,12 @@ static void FG5ParseStateString(NSString *s, NSTimeInterval *start, NSTimeInterv
         *start = (*start > 0) ? MIN(*start, [parts[0] doubleValue]) : [parts[0] doubleValue];
     }
     if (parts.count >= 2 && [parts[1] doubleValue] > 0) *maxSeen = MAX(*maxSeen, [parts[1] doubleValue]);
+    // act và actHash là MỘT CẶP: nơi nào có act sớm nhất thì lấy cả cặp của nơi đó
     if (parts.count >= 3 && [parts[2] doubleValue] > 0) {
-        *act = (*act > 0) ? MIN(*act, [parts[2] doubleValue]) : [parts[2] doubleValue];
+        if (*act <= 0 || [parts[2] doubleValue] < *act) {
+            *act = [parts[2] doubleValue];
+            if (actHash) *actHash = (parts.count >= 4) ? parts[3] : @"";
+        }
     }
 }
 
@@ -154,18 +175,21 @@ static void FG5FileSetStateString(NSString *s) {
 }
 
 // Nạp + hợp nhất 3 nơi; persist=YES khi có thay đổi cần ghi lại khắp nơi.
-static void FG5LoadState(NSTimeInterval *startOut, NSTimeInterval *maxSeenOut, NSTimeInterval *actOut, BOOL *dirtyOut) {
+static void FG5LoadState(NSTimeInterval *startOut, NSTimeInterval *maxSeenOut, NSTimeInterval *actOut, NSString **actHashOut, BOOL *dirtyOut) {
     NSTimeInterval start = 0, maxSeen = 0, act = 0;
+    NSString *actHash = @"";
     // Nơi 1: prefs
     NSNumber *ps = FG5PrefValue(FG5_KEY_TRIAL_START);
     NSNumber *pm = FG5PrefValue(FG5_KEY_MAX_SEEN);
     NSNumber *pa = FG5PrefValue(FG5_KEY_ACT_START);
+    NSString *ph = FG5PrefValue(FG5_KEY_ACT_KEYHASH);
     if ([ps isKindOfClass:[NSNumber class]] && [ps doubleValue] > 0) start = [ps doubleValue];
     if ([pm isKindOfClass:[NSNumber class]] && [pm doubleValue] > 0) maxSeen = [pm doubleValue];
     if ([pa isKindOfClass:[NSNumber class]] && [pa doubleValue] > 0) act = [pa doubleValue];
+    if ([ph isKindOfClass:[NSString class]]) actHash = ph;
     // Nơi 2 + 3
-    FG5ParseStateString(FG5KeychainStateString(), &start, &maxSeen, &act);
-    FG5ParseStateString(FG5FileStateString(), &start, &maxSeen, &act);
+    FG5ParseStateString(FG5KeychainStateString(), &start, &maxSeen, &act, &actHash);
+    FG5ParseStateString(FG5FileStateString(), &start, &maxSeen, &act, &actHash);
 
     NSTimeInterval nowReal = [[NSDate date] timeIntervalSince1970];
     BOOL dirty = NO;
@@ -176,14 +200,16 @@ static void FG5LoadState(NSTimeInterval *startOut, NSTimeInterval *maxSeenOut, N
     if (startOut) *startOut = start;
     if (maxSeenOut) *maxSeenOut = effNow; // trả về "hiện tại hiệu dụng" đã chống vặn giờ
     if (actOut) *actOut = act;
+    if (actHashOut) *actHashOut = actHash;
 }
 
-static void FG5PersistState(NSTimeInterval start, NSTimeInterval maxSeen, NSTimeInterval act) {
+static void FG5PersistState(NSTimeInterval start, NSTimeInterval maxSeen, NSTimeInterval act, NSString *actHash) {
     FG5PrefSet(FG5_KEY_TRIAL_START, @((long long)start));
     FG5PrefSet(FG5_KEY_MAX_SEEN, @((long long)maxSeen));
     FG5PrefSet(FG5_KEY_ACT_START, @((long long)act));
-    NSString *s = [NSString stringWithFormat:@"%lld|%lld|%lld",
-                   (long long)start, (long long)maxSeen, (long long)act];
+    FG5PrefSet(FG5_KEY_ACT_KEYHASH, actHash ?: @"");
+    NSString *s = [NSString stringWithFormat:@"%lld|%lld|%lld|%@",
+                   (long long)start, (long long)maxSeen, (long long)act, actHash ?: @""];
     FG5KeychainSetStateString(s);
     FG5FileSetStateString(s);
 }
@@ -263,9 +289,10 @@ static BOOL FG5VerifyKey(NSString *key, NSInteger *kindOut, NSString **nameOut) 
 
 FG5LicState FG5LicenseCurrentState(NSInteger *daysLeftOut, NSString **nameOut) {
     NSTimeInterval start = 0, effNow = 0, act = 0;
+    NSString *actHash = @"";
     BOOL dirty = NO;
-    FG5LoadState(&start, &effNow, &act, &dirty);
-    if (dirty) FG5PersistState(start, effNow, act);
+    FG5LoadState(&start, &effNow, &act, &actHash, &dirty);
+    if (dirty) FG5PersistState(start, effNow, act, actHash);
 
     NSString *savedKey = FG5PrefString(FG5_KEY_LICENSE_KEY, @"");
     NSInteger kind = 0;
@@ -279,7 +306,8 @@ FG5LicState FG5LicenseCurrentState(NSInteger *daysLeftOut, NSString **nameOut) {
         // kind 3: 3 ngày từ lúc kích hoạt (act đã hợp nhất 3 nơi)
         if (act <= 0) {
             act = effNow;
-            FG5PersistState(start, effNow, act);
+            actHash = FG5KeyHash(savedKey);
+            FG5PersistState(start, effNow, act, actHash);
         }
         NSTimeInterval remain = (act + 3 * 86400) - effNow;
         if (remain > 0) {
@@ -339,14 +367,25 @@ BOOL FG5LicenseTryActivateKey(NSString *key, NSString **nameOut, NSString **erro
         return NO;
     }
     NSTimeInterval start = 0, effNow = 0, act = 0;
+    NSString *actHash = @"";
     BOOL dirty = NO;
-    FG5LoadState(&start, &effNow, &act, &dirty);
+    FG5LoadState(&start, &effNow, &act, &actHash, &dirty);
     NSString *oldKey = FG5PrefString(FG5_KEY_LICENSE_KEY, @"");
-    // Key phụ MỚI (khác key cũ) thì tính 3 ngày lại từ bây giờ
-    if (kind == 3 && ![oldKey isEqualToString:clean]) act = effNow;
-    if (kind == 3 && act <= 0) act = effNow;
+    if (kind == 3) {
+        NSString *hash = FG5KeyHash(clean);
+        if (act > 0 && [actHash isEqualToString:hash]) {
+            // Chính key này đã từng kích hoạt: GIỮ mốc đầu tiên — reset xoá
+            // key rồi nhập lại cũng không kéo dài được hạn (yêu cầu của anh).
+        } else if (act > 0 && actHash.length == 0 && [oldKey isEqualToString:clean]) {
+            actHash = hash; // mốc cũ của bản trước 1.1.9, gắn cho chính key đang lưu
+        } else {
+            act = effNow;   // key phụ mới: 3 ngày tính từ bây giờ
+            actHash = hash;
+        }
+        if (act <= 0) { act = effNow; actHash = hash; }
+    }
     FG5PrefSet(FG5_KEY_LICENSE_KEY, clean);
-    FG5PersistState(start, effNow, act);
+    FG5PersistState(start, effNow, act, actHash);
     if (nameOut) *nameOut = name;
     FG5Log(@"bản quyền: ĐÃ KÍCH HOẠT kind=%ld tên=%@", (long)kind, name);
     return YES;

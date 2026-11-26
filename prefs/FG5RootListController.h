@@ -1,4 +1,4 @@
-// FG5RootListController.h — Fake5G 1.1.8
+// FG5RootListController.h — Fake5G 1.1.9
 #import <UIKit/UIKit.h>
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
@@ -13,6 +13,8 @@
 - (void)showActivatePopupWithMessage:(NSString *)message;
 - (void)activateTapped:(id)sender;
 - (void)respringTapped:(id)sender;
+- (void)resetTapped:(id)sender;
+- (void)fg5PerformReset;
 - (void)popupTimerFired;
 - (void)stopPopupTimer;
 - (void)installExpiredOverlay;

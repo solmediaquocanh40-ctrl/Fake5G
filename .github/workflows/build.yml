@@ -40,7 +40,11 @@ jobs:
       - name: Build package
         run: |
           export THEOS="$HOME/theos"
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
+          if [ "${{ matrix.scheme }}" = "rootful" ]; then
+            make package FINALPACKAGE=1
+          else
+            make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=${{ matrix.scheme }}
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -1,6 +1,7 @@
 // FG5RootListController.h — Fake5G 1.0.0
 #import <UIKit/UIKit.h>
 #import <Preferences/PSListController.h>
+#import <Preferences/PSSpecifier.h>
 
 @interface FG5RootListController : PSListController <UITextFieldDelegate>
 @property (nonatomic, weak) UIAlertController *activeAlert;

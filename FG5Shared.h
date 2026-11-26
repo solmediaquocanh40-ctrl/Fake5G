@@ -1,4 +1,4 @@
-// FG5Shared.h — Fake5G 1.1.6 (com.anhdang.fake5g)
+// FG5Shared.h — Fake5G 1.1.7 (com.anhdang.fake5g)
 // Khai báo dùng chung giữa tweak (SpringBoard) và prefs bundle (Cài đặt).
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>

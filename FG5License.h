@@ -1,4 +1,4 @@
-// FG5License.h — Fake5G 1.1.6
+// FG5License.h — Fake5G 1.1.7
 // Hệ bản quyền theo đúng mẫu ZUS 1.2.x đã chạy thật trên máy:
 //  - Dùng thử 3 ngày tự động từ lần chạy đầu; mốc ghi 3 nơi (prefs + Keychain
 //    + file trong Documents), lấy mốc sớm nhất, chống vặn ngược đồng hồ

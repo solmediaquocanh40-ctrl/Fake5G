@@ -1,4 +1,4 @@
-# Fake5G 1.1.6 — com.anhdang.fake5g
+# Fake5G 1.1.7 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,31 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.7 — đổi cơ chế: chặn tại nguồn dữ liệu + một cửa sổ phủ
+
+Theo đúng cách của HideStatusBarItemsPro và StatusMagic (anh gửi):
+bỏ hẳn engine săn view/cửa sổ của 1.1.4–1.1.6. Mọi thanh trạng thái
+đều vẽ từ một khối dữ liệu trung tâm do SBStatusBarStateAggregator
+dựng — bản này can thiệp tại đó:
+
+1. **Ẩn đồ gốc tại nguồn**: hook `_setItem:enabled:` của aggregator,
+   ép tắt sóng gốc (mục 4/5), chữ nhà mạng gốc (6/7), icon Wi-Fi (8),
+   chữ mạng dữ liệu thật (9/10) — theo bản đồ mục iOS 16 của
+   StatusMagic. Tắt tại nguồn thì mọi bề mặt (màn hình chính, khoá,
+   trong app, switcher) đều mất đồ gốc cùng lúc. Phát lại trạng thái
+   khi đổi prefs và khi màn hình khoá đóng/mở để aggregator tính lại
+   qua hook. Thêm mạng lưới an toàn: hook theo class
+   _UIStatusBarWifiSignalView (ẩn bằng alpha) phòng khi mục 8 lệch.
+2. **Một cửa sổ phủ duy nhất** vẽ chữ nhà mạng + vạch sóng + nhãn 5G:
+   trong suốt, không chặn chạm, tự nâng tầng lên trên mọi cửa sổ của
+   SpringBoard (trần 1990, dưới cảnh báo hệ thống), toạ độ theo
+   profile (cổ điển = cụm trái; tai thỏ/Island = cụm tai phải, chừa
+   chỗ pin gốc). Option Switcher: cửa sổ phủ tự ẩn khi switcher đang
+   hiện và option tắt. Option "chỉ khi có Wi-Fi": hook ghi lại ý định
+   bật/tắt mục Wi-Fi thật của hệ thống để biết máy đang có Wi-Fi.
+3. Realtime thật: đổi prefs là cửa sổ phủ vẽ lại + aggregator phát
+   lại ngay trong cùng tích tắc.
 
 ## 1.1.6 — xử lý riêng màn hình chính + sửa nhận diện nhà mạng
 
@@ -52,7 +77,7 @@ tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do qu
 bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
 đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
 hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
-trong gói 1.1.4/1.1.6 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+trong gói 1.1.4/1.1.7 nhưng app Cài đặt đang chạy giữ bundle cũ trong
 bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
@@ -94,7 +119,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.6 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.7 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

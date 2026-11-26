@@ -1,4 +1,4 @@
-// FG5RootListController.m — Fake5G 1.1.1
+// FG5RootListController.m — Fake5G 1.1.2
 // Trang Cài đặt của Fake5G. Khi hết hạn dùng thử / key hết hạn: mở trang lên
 // là hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
 // tạm dừng trong lúc đang gõ key) và phủ mờ trang như mẫu ZUS.

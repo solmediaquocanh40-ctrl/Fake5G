@@ -1,4 +1,4 @@
-# Fake5G 1.1.1 — com.anhdang.fake5g
+# Fake5G 1.1.2 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -13,6 +13,21 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - **Ẩn chữ "Không có SIM"** trên thanh trạng thái.
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
+
+## 1.1.2 — sửa lỗi chọn cửa sổ (log 1.1.1, máy thật 26/11/2026)
+
+Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
+trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
+đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.2 đổi hẳn cách tìm: quét mọi
+cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
+ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
+`safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi
+view cha của icon Wi-Fi để vòng sau hiệu chỉnh tiếp nếu cần.
+
+Đã kiểm chứng trên máy thật ở 1.1.1: trang Cài đặt hết đen (chọn được
+Chữ hiển thị / nhà mạng — log prefs 16:51–16:53), key chủ kích hoạt
+thành công (vĩnh viễn).
 
 ## 1.1.1 — sửa 2 lỗi từ máy thật (log 26/11/2026, iPhone 12 Pro)
 

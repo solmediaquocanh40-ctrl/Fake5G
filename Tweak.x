@@ -1,4 +1,4 @@
-// Tweak.x — Fake5G 1.1.1 (com.anhdang.fake5g)
+// Tweak.x — Fake5G 1.1.2 (com.anhdang.fake5g)
 // Giả hiển thị trên thanh trạng thái: thay icon Wi-Fi bằng nhãn chữ tuỳ chọn
 // (4G/5G/tự nhập), hiện vạch sóng giả + tên nhà mạng giả cho máy không SIM,
 // ẩn chữ "Không có SIM". Chỉ giả HIỂN THỊ — kết nối thật giữ nguyên 100%.
@@ -65,6 +65,7 @@ static BOOL FG5IsNoSimText(NSString *text) {
 @property (nonatomic, assign) BOOL dumpedOnce;
 @property (nonatomic, assign) BOOL loggedProfile;
 @property (nonatomic, assign) BOOL loggedWindows;
+@property (nonatomic, assign) NSInteger dumpBudget;
 @property (nonatomic, weak) UIWindow *activeWindow;
 @property (nonatomic, strong) NSMutableSet<NSString *> *loggedTexts;
 - (void)start;
@@ -78,6 +79,8 @@ static BOOL FG5IsNoSimText(NSString *text) {
 - (void)dumpTree:(UIView *)view depth:(NSInteger)depth;
 - (NSArray<UIWindow *> *)allWindows;
 - (UIWindow *)bestStatusBarWindowWithFound:(NSMutableDictionary **)foundOut;
+- (NSInteger)scoreForFound:(NSDictionary *)found;
+- (NSString *)ancestorChainOfView:(UIView *)view;
 - (UIColor *)statusBarContentColorNearView:(UIView *)view fallbackWindow:(UIWindow *)window;
 @end
 
@@ -95,7 +98,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 - (void)start {
     self.loggedTexts = [NSMutableSet set];
     [self reloadPrefs];
-    FG5Log(@"Fake5G 1.1.1 khoi dong — ban quyen: %@", FG5LicenseStatusText());
+    FG5Log(@"Fake5G 1.1.2 khoi dong — ban quyen: %@", FG5LicenseStatusText());
     self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                   target:self
                                                 selector:@selector(tick)
@@ -137,32 +140,77 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     return windows;
 }
 
-// Sửa ở 1.1.1 theo log máy thật 26/11: bản 1.0.0 chọn nhầm
-// SBStatusBarReusePoolWindow (kho chứa thanh trạng thái tái sử dụng, khung
-// bằng cả màn hình, rỗng) nên không bao giờ thấy icon Wi-Fi. Cách đúng:
-// loại thẳng ReusePool, chỉ xét cửa sổ thấp (<= 70pt, đúng tầm thanh trạng
-// thái), quét TẤT CẢ cửa sổ và chọn cửa sổ chứa nhiều view trạng thái nhất —
-// bám theo view neo thật, không đoán cửa sổ.
+- (NSInteger)scoreForFound:(NSDictionary *)found {
+    NSInteger score = 0;
+    if (found[@"wifi"]) score += 100;
+    if (found[@"cellular"]) score += 40;
+    score += (NSInteger)[(NSArray *)found[@"strings"] count];
+    return score;
+}
+
+- (NSString *)ancestorChainOfView:(UIView *)view {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    UIView *v = view;
+    NSInteger guard = 0;
+    while (v && guard++ < 14) {
+        [parts addObject:NSStringFromClass([v class])];
+        if ([v isKindOfClass:[UIWindow class]]) break;
+        v = v.superview;
+    }
+    return [parts componentsJoinedByString:@" > "];
+}
+
+// Lịch sử chọn cửa sổ: 1.0.0 bắt nhầm SBStatusBarReusePoolWindow (kho chứa
+// thanh trạng thái tái sử dụng, rỗng). 1.1.1 sửa bằng cách chỉ xét cửa sổ
+// cao <= 70pt — NHƯNG log máy thật 26/11 chứng minh iOS 16 SpringBoard
+// KHÔNG có cửa sổ trạng thái riêng nào thấp cả: cả 15 cửa sổ đều cao bằng
+// màn hình (844) hoặc 340, nên 1.1.1 loại sạch mọi cửa sổ và không bám
+// được vào đâu. Cách đúng từ 1.1.2: tìm theo VIEW NEO — quét mọi cửa sổ
+// (bỏ cửa sổ đang ẩn), cửa sổ nào chứa icon Wi-Fi thật thì bám cửa sổ đó;
+// kho ReusePool chỉ dùng khi không cửa sổ nào khác có view trạng thái.
 - (UIWindow *)bestStatusBarWindowWithFound:(NSMutableDictionary **)foundOut {
+    // Đường nhanh: cửa sổ đang bám mà còn icon Wi-Fi thì giữ nguyên
+    if (self.activeWindow &&
+        ![NSStringFromClass([self.activeWindow class]) containsString:@"ReusePool"] &&
+        !self.activeWindow.hidden) {
+        NSMutableDictionary *found = [NSMutableDictionary dictionary];
+        found[@"strings"] = [NSMutableArray array];
+        [self walkView:(UIView *)self.activeWindow into:found depth:0];
+        if (found[@"wifi"]) {
+            if (foundOut) *foundOut = found;
+            return self.activeWindow;
+        }
+    }
     UIWindow *best = nil;
     NSMutableDictionary *bestFound = nil;
     NSInteger bestScore = 0;
+    UIWindow *poolBest = nil;
+    NSMutableDictionary *poolFound = nil;
+    NSInteger poolScore = 0;
     for (UIWindow *w in [self allWindows]) {
-        NSString *cls = NSStringFromClass([w class]);
-        if ([cls containsString:@"ReusePool"]) continue;
-        if (w.bounds.size.height > 70 || w.bounds.size.width < 100) continue;
+        if (w.hidden || w.alpha < 0.01) continue;
         NSMutableDictionary *found = [NSMutableDictionary dictionary];
         found[@"strings"] = [NSMutableArray array];
         [self walkView:(UIView *)w into:found depth:0];
-        NSInteger score = 0;
-        if (found[@"wifi"]) score += 100;
-        if (found[@"cellular"]) score += 40;
-        score += (NSInteger)[(NSArray *)found[@"strings"] count];
+        NSInteger score = [self scoreForFound:found];
+        if (score == 0) continue;
+        if ([NSStringFromClass([w class]) containsString:@"ReusePool"]) {
+            if (score > poolScore) {
+                poolScore = score;
+                poolBest = w;
+                poolFound = found;
+            }
+            continue;
+        }
         if (score > bestScore) {
             bestScore = score;
             best = w;
             bestFound = found;
         }
+    }
+    if (!best && poolBest) {
+        best = poolBest;
+        bestFound = poolFound;
     }
     if (foundOut) *foundOut = bestFound;
     return best;
@@ -172,8 +220,11 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     if ([gLayoutPref isEqualToString:@"classic"]) return 0;
     if ([gLayoutPref isEqualToString:@"notch"]) return 1;
     if ([gLayoutPref isEqualToString:@"island"]) return 2;
-    // Tự động: theo chiều cao vùng trạng thái (cổ điển 20, tai thỏ 44–47, Island 54+)
-    CGFloat h = MAX(window.bounds.size.height, window.safeAreaInsets.top);
+    // Tự động: theo safeAreaInsets.top của cửa sổ (cổ điển 0→20, tai thỏ
+    // 44–47, Island 59). KHÔNG dùng chiều cao cửa sổ: trên iOS 16 cửa sổ
+    // chứa thanh trạng thái cao bằng cả màn hình (log 26/11).
+    CGFloat h = window.safeAreaInsets.top;
+    if (h <= 0) h = 20;
     if (h <= 24) return 0;
     if (h >= 52) return 2;
     return 1;
@@ -202,7 +253,10 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 }
 
 - (void)dumpTree:(UIView *)view depth:(NSInteger)depth {
-    if (!view || depth > 7) return;
+    // Trần 220 dòng: từ 1.1.2 cửa sổ bám được có thể là cửa sổ toàn màn hình
+    // (cây view rất lớn), không trần thì log ngập và máy chậm hẳn.
+    if (!view || depth > 7 || self.dumpBudget <= 0) return;
+    self.dumpBudget--;
     NSMutableString *pad = [NSMutableString string];
     for (NSInteger i = 0; i < depth; i++) [pad appendString:@"  "];
     FG5Log(@"%@%@ frame=%@", pad, NSStringFromClass([view class]),
@@ -281,7 +335,12 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         self.dumpedOnce = YES;
         FG5Log(@"bam vao cua so: %@ frame=%@", NSStringFromClass([window class]),
                NSStringFromCGRect(window.frame));
+        if (found[@"wifi"]) {
+            FG5Log(@"chuoi view cha cua icon Wi-Fi: %@",
+                   [self ancestorChainOfView:found[@"wifi"]]);
+        }
         FG5Log(@"— dump cay thanh trang thai (phuc vu chan doan) —");
+        self.dumpBudget = 220;
         [self dumpTree:(UIView *)window depth:0];
     }
 

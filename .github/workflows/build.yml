@@ -1,4 +1,4 @@
-name: Build Fake5G 1.1.12
+name: Build Fake5G 1.1.13
 
 on:
   push:
@@ -39,6 +39,7 @@ jobs:
 
       - name: Build package
         run: |
+          rm -f layout/Library/PreferenceLoader/Preferences/icon.png "layout/Library/PreferenceLoader/Preferences/icon@2x.png"
           export THEOS="$HOME/theos"
           if [ "${{ matrix.scheme }}" = "rootful" ]; then
             make package FINALPACKAGE=1
@@ -49,5 +50,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Fake5G-1.1.12-${{ matrix.scheme }}
+          name: Fake5G-1.1.13-${{ matrix.scheme }}
           path: packages/*.deb

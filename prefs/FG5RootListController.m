@@ -1,0 +1,176 @@
+// FG5RootListController.m — Fake5G 1.0.0
+// Trang Cài đặt của Fake5G. Khi hết hạn dùng thử / key hết hạn: mở trang lên
+// là hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
+// tạm dừng trong lúc đang gõ key) và phủ mờ trang như mẫu ZUS.
+#import "FG5RootListController.h"
+#import "../FG5Shared.h"
+#import "../FG5License.h"
+#import <spawn.h>
+
+extern char **environ;
+
+@implementation FG5RootListController
+
+- (NSArray *)specifiers {
+    if (!_specifiers) {
+        _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+        for (PSSpecifier *spec in _specifiers) {
+            if ([[spec propertyForKey:@"id"] isEqualToString:@"licenseGroup"]) {
+                [spec setProperty:FG5LicenseStatusText() forKey:@"footerText"];
+            }
+        }
+    }
+    return _specifiers;
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if (FG5LicenseActive()) {
+        [self removeExpiredOverlay];
+        self.popupShownThisAppear = NO;
+    } else {
+        [self installExpiredOverlay];
+        if (!self.popupShownThisAppear) {
+            self.popupShownThisAppear = YES;
+            [self showActivatePopup];
+        }
+    }
+}
+
+#pragma mark - Phủ mờ khi hết hạn
+
+- (void)installExpiredOverlay {
+    if ([self.view viewWithTag:9001]) return;
+    UIVisualEffectView *blur = [[UIVisualEffectView alloc]
+        initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    blur.tag = 9001;
+    blur.frame = self.view.bounds;
+    blur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    UILabel *label = [[UILabel alloc] initWithFrame:blur.contentView.bounds];
+    label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    label.text = @"Đã hết hạn dùng thử\nChạm để nhập key kích hoạt";
+    label.numberOfLines = 2;
+    label.textAlignment = NSTextAlignmentCenter;
+    label.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    [blur.contentView addSubview:label];
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
+        initWithTarget:self action:@selector(expiredOverlayTapped)];
+    [blur addGestureRecognizer:tap];
+    [self.view addSubview:blur];
+}
+
+- (void)removeExpiredOverlay {
+    [[self.view viewWithTag:9001] removeFromSuperview];
+}
+
+- (void)expiredOverlayTapped {
+    [self showActivatePopup];
+}
+
+#pragma mark - Popup Active (mẫu ZUS: OK/Huỷ, tự tắt 30s, dừng đếm khi gõ)
+
+- (void)activateTapped:(id)sender {
+    [self showActivatePopup];
+}
+
+- (void)showActivatePopup {
+    [self showActivatePopupWithMessage:FG5LicenseStatusText()];
+}
+
+- (void)showActivatePopupWithMessage:(NSString *)message {
+    if (self.activeAlert) return;
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:@"Kích hoạt Fake5G"
+                         message:[message stringByAppendingString:
+                                  @"\nDán key vào ô dưới rồi bấm OK. Popup tự đóng sau 30 giây."]
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"FG51-....";
+        textField.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
+        textField.autocorrectionType = UITextAutocorrectionTypeNo;
+        textField.delegate = self;
+    }];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault
+        handler:^(UIAlertAction *action) {
+            [weakSelf stopPopupTimer];
+            weakSelf.activeAlert = nil;
+            NSString *key = alert.textFields.firstObject.text ?: @"";
+            NSString *name = nil, *error = nil;
+            if (FG5LicenseTryActivateKey(key, &name, &error)) {
+                [weakSelf removeExpiredOverlay];
+                weakSelf.popupShownThisAppear = NO;
+                [weakSelf reloadSpecifiers];
+                UIAlertController *ok = [UIAlertController
+                    alertControllerWithTitle:@"Đã kích hoạt"
+                                     message:[NSString stringWithFormat:@"Key của %@ đã được chấp nhận.", name ?: @""]
+                              preferredStyle:UIAlertControllerStyleAlert];
+                [ok addAction:[UIAlertAction actionWithTitle:@"Xong" style:UIAlertActionStyleDefault handler:nil]];
+                [weakSelf presentViewController:ok animated:YES completion:nil];
+            } else {
+                [weakSelf showActivatePopupWithMessage:(error ?: @"Key chưa đúng.")];
+            }
+        }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Huỷ" style:UIAlertActionStyleCancel
+        handler:^(UIAlertAction *action) {
+            [weakSelf stopPopupTimer];
+            weakSelf.activeAlert = nil;
+        }]];
+    self.activeAlert = alert;
+    self.popupSecondsLeft = 30;
+    self.popupEditing = NO;
+    [self presentViewController:alert animated:YES completion:nil];
+    [self stopPopupTimer];
+    self.popupTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
+                                                       target:self
+                                                     selector:@selector(popupTimerFired)
+                                                     userInfo:nil
+                                                      repeats:YES];
+}
+
+- (void)popupTimerFired {
+    if (self.popupEditing) return; // đang gõ key thì dừng đếm, như ZUS
+    self.popupSecondsLeft -= 1;
+    if (self.popupSecondsLeft <= 0) {
+        [self stopPopupTimer];
+        [self.activeAlert dismissViewControllerAnimated:YES completion:nil];
+        self.activeAlert = nil;
+    }
+}
+
+- (void)stopPopupTimer {
+    [self.popupTimer invalidate];
+    self.popupTimer = nil;
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField {
+    self.popupEditing = YES;
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    self.popupEditing = NO;
+}
+
+#pragma mark - Respring
+
+- (void)respringTapped:(id)sender {
+    NSArray<NSString *> *candidates = @[@"/var/jb/usr/bin/sbreload", @"/usr/bin/sbreload"];
+    for (NSString *path in candidates) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            const char *argv[] = { [path fileSystemRepresentation], NULL };
+            pid_t pid = 0;
+            posix_spawn(&pid, [path fileSystemRepresentation], NULL, NULL,
+                        (char *const *)argv, environ);
+            return;
+        }
+    }
+    FG5Log(@"respring: khong tim thay sbreload");
+    UIAlertController *alert = [UIAlertController
+        alertControllerWithTitle:@"Fake5G"
+                         message:@"Không tìm thấy sbreload — hãy respring bằng công cụ jailbreak của anh."
+                  preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+@end

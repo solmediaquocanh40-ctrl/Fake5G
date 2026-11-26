@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>id</key>
+			<string>licenseGroup</string>
+			<key>label</key>
+			<string>BẢN QUYỀN</string>
+			<key>footerText</key>
+			<string>Đang kiểm tra bản quyền…</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Nhập key kích hoạt</string>
+			<key>action</key>
+			<string>activateTapped:</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>BẬT / TẮT</string>
+			<key>footerText</key>
+			<string>Bật tweak là thanh trạng thái đổi ngay, không cần respring. Hết hạn dùng thử, mở trang này sẽ hiện popup nhập key.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>enabled</string>
+			<key>label</key>
+			<string>Bật Fake5G</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>NHÃN THAY ICON WI-FI</string>
+			<key>footerText</key>
+			<string>Ô tự nhập có chữ thì dùng ô tự nhập. Chữ dài quá 6–8 ký tự sẽ chật trên thanh trạng thái.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>5G</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>labelPreset</string>
+			<key>label</key>
+			<string>Chữ hiển thị</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>4G</string>
+				<string>5G</string>
+				<string>5G+</string>
+				<string>5G UW</string>
+				<string>LTE</string>
+				<string>6G</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>4G</string>
+				<string>5G</string>
+				<string>5G+</string>
+				<string>5G UW</string>
+				<string>LTE</string>
+				<string>6G</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSEditTextCell</string>
+			<key>default</key>
+			<string></string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>labelCustom</string>
+			<key>label</key>
+			<string>Chữ tự nhập</string>
+			<key>placeholder</key>
+			<string>Để trống = dùng chữ ở trên</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>onlyOnWifi</string>
+			<key>label</key>
+			<string>Chỉ thay khi có Wi-Fi</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>SÓNG SIM GIẢ (MÁY KHÔNG SIM)</string>
+			<key>footerText</key>
+			<string>Tên nhà mạng tự nhập có chữ thì dùng tên tự nhập. Tên dài quá ~12 ký tự sẽ bị chật.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>fakeBars</string>
+			<key>label</key>
+			<string>Hiện vạch sóng giả</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>4</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>barsCount</string>
+			<key>label</key>
+			<string>Số vạch sóng</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>1</string>
+				<string>2</string>
+				<string>3</string>
+				<string>4</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>1 vạch</string>
+				<string>2 vạch</string>
+				<string>3 vạch</string>
+				<string>4 vạch</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>fakeCarrier</string>
+			<key>label</key>
+			<string>Hiện tên nhà mạng giả</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>default</key>
+			<string>Viettel</string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>carrierPreset</string>
+			<key>label</key>
+			<string>Tên nhà mạng</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>Viettel</string>
+				<string>VinaPhone</string>
+				<string>MobiFone</string>
+				<string>Vietnamobile</string>
+				<string>Y!mobile</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Viettel</string>
+				<string>VinaPhone</string>
+				<string>MobiFone</string>
+				<string>Vietnamobile</string>
+				<string>Y!mobile</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSEditTextCell</string>
+			<key>default</key>
+			<string></string>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>carrierCustom</string>
+			<key>label</key>
+			<string>Tên nhà mạng tự nhập</string>
+			<key>placeholder</key>
+			<string>Để trống = dùng tên ở trên</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>hideNoSim</string>
+			<key>label</key>
+			<string>Ẩn chữ "Không có SIM"</string>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>Fake5G 1.0.0 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Respring</string>
+			<key>action</key>
+			<string>respringTapped:</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>Fake5G</string>
+</dict>
+</plist>

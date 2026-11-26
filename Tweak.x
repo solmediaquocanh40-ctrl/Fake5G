@@ -1,9 +1,25 @@
-// Tweak.x — Fake5G 1.1.10 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+// Tweak.x — Fake5G 1.1.11 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+//
+// BẢN 1.1.11 (theo bằng chứng máy thật trên 1.1.10 + mục anh Quoc thêm):
+//   1. PIN SWITCHER: thu lệnh phát lại ở chế độ thường về 10 mục như
+//      1.1.7 đã chứng minh — việc mở rộng ra 45 mục ở mọi chế độ (từ
+//      1.1.9) là nghi phạm làm pin gốc chết ở App Switcher (độc chiếm
+//      TẮT vẫn mất pin). Độc chiếm mới phủ 0–44.
+//   2. QUẠT WI-FI MÀN HÌNH CHÍNH: nó sống sót qua cả 3 lớp chặn cũ kể
+//      cả khi độc chiếm dập hết mọi thứ khác. Bỏ hook theo TÊN class
+//      (sai tên là im lặng không chạy): nay DÒ class thật trên máy rồi
+//      móc bằng tay — view quạt bị kẹp cả ở layoutSubviews,
+//      didMoveToWindow lẫn setAlpha: — kèm LOG CHỨNG MINH móc được
+//      class nào, ép được view nào, ở cửa sổ nào. Lớp ẩn thanh gốc
+//      của độc chiếm cũng chuyển sang cơ chế dò class này.
+//   3. THANH TRƯỢT TINH CHỈNH VỊ TRÍ (anh thêm 27/11): 2 thanh trượt
+//      ngang/dọc trong Cài đặt, kéo là cụm giả (vạch + chữ, và nhà
+//      mạng khi nằm cùng cụm) dịch chuyển NGAY trên thanh trạng thái
+//      (offsetX/offsetY, PostNotification realtime như mọi pref khác).
 //
 // BẢN 1.1.10: sửa Reset phía prefs (ghi mặc định qua setPreferenceValue
 // thay vì xoá key trần — bản 1.1.9 bị trang Cài đặt ghi ngược ô gạt Bật
 // thành ON) + đổi tên icon PreferenceLoader icon.png → Fake5GPrefs.png.
-// File này chỉ đổi số bản; phần lõi giữ nguyên như 1.1.9 dưới đây.
 //
 // BẢN 1.1.9 (theo các mục anh Quoc chốt 26/11):
 //   1. MẶC ĐỊNH TẮT: cài mới xong tweak nằm im (enabled mặc định false ở cả
@@ -32,8 +48,8 @@
 // MỘT cửa sổ phủ của mình vẽ nhà mạng + vạch + nhãn. Phát lại lệnh qua
 // -[SBStatusBarStateAggregator updateStatusBarItem:] mỗi khi prefs đổi,
 // ở nhịp đầu và khi khoá/mở màn hình. Dò Wi-Fi bằng SBWiFiManager
-// isAssociated mỗi giây (1.1.8). Lưới an toàn: hook
-// _UIStatusBarWifiSignalView ép alpha 0.
+// isAssociated mỗi giây (1.1.8). Lưới an toàn: móc runtime vào class
+// view quạt Wi-Fi dò được trên máy, ép alpha 0 (1.1.11).
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
@@ -66,22 +82,13 @@
 @property (nonatomic, copy, readonly) NSArray *connectedDevices;
 @end
 
-@interface UIStatusBar_Modern : UIView
-@end
-
-@interface _UIStatusBar : UIView
-@end
-
 @interface _UIStatusBarStringView : UILabel
 - (void)setText:(NSString *)text;
 @end
 
-@interface _UIStatusBarWifiSignalView : UIView
-@end
-
 #pragma mark - Trạng thái (nạp từ prefs)
 
-static BOOL gEnabled = NO; // 1.1.10: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
+static BOOL gEnabled = NO; // 1.1.11: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
 static BOOL gLicensed = NO;
 static BOOL gFakeBars = YES;
 static BOOL gFakeCarrier = YES;
@@ -96,6 +103,8 @@ static NSString *gLayoutProfilePref = @"auto";
 static NSString *gSideClassic = @"left";
 static NSString *gSideNotch = @"right";
 static NSString *gSideIsland = @"right";
+static CGFloat gOffsetX = 0;
+static CGFloat gOffsetY = 0;
 
 // 0 = cổ điển, 1 = tai thỏ, 2 = Dynamic Island
 static NSInteger FG5EffectiveProfile(void);
@@ -118,6 +127,10 @@ static void FG5ReloadPrefs(void) {
     gSideClassic = FG5PrefString(FG5_KEY_SIDE_CLASSIC, @"left");
     gSideNotch = FG5PrefString(FG5_KEY_SIDE_NOTCH, @"right");
     gSideIsland = FG5PrefString(FG5_KEY_SIDE_ISLAND, @"right");
+    id ox = FG5PrefValue(FG5_KEY_OFFSET_X);
+    id oy = FG5PrefValue(FG5_KEY_OFFSET_Y);
+    gOffsetX = [ox isKindOfClass:[NSNumber class]] ? [ox doubleValue] : 0;
+    gOffsetY = [oy isKindOfClass:[NSNumber class]] ? [oy doubleValue] : 0;
     gLicensed = FG5LicenseActive();
 }
 
@@ -173,15 +186,19 @@ static UIFont *FG5BorrowStatusFont(void) {
     return nil;
 }
 
-// Phát lại lệnh cập nhật cho CẢ 45 mục để tổng đài áp trạng thái đã ép.
-// (1.1.7 chỉ phát 0–10; 1.1.10 phát hết: độc chiếm cần dập cả giờ/pin, và
-// khi prefs bị reset lúc đang độc chiếm thì mọi mục cũng phải được trả lại.)
+// Phát lại lệnh cập nhật để tổng đài áp trạng thái đã ép.
+// 1.1.11 THU VỀ PHẠM VI ĐÃ CHỨNG MINH: chế độ thường chỉ phát 0–10 như
+// 1.1.7 (bản đó pin ở App Switcher còn nguyên trong ảnh nghiệm thu);
+// việc mở rộng ra cả 45 mục ở mọi chế độ (từ 1.1.9) là nghi phạm số 1
+// làm pin gốc chết ở switcher (máy thật 1.1.11, độc chiếm TẮT vẫn mất
+// pin). Độc chiếm mới phủ 0–44.
 static void FG5RepublishItems(void) {
     if (!gAggregator) return;
     SEL sel = NSSelectorFromString(@"updateStatusBarItem:");
     if (![gAggregator respondsToSelector:sel]) return;
     void (*send)(id, SEL, int) = (void (*)(id, SEL, int))objc_msgSend;
-    for (int i = 0; i < 45; i++) send(gAggregator, sel, i);
+    int hi = gExclusive ? 44 : 10;
+    for (int i = 0; i <= hi; i++) send(gAggregator, sel, i);
 }
 
 // Ép trạng thái một mục: trả về YES nếu mục này phải bị TẮT theo cấu hình.
@@ -215,22 +232,87 @@ static BOOL FG5ItemForcedOff(int item) {
 
 %end
 
+// ============================================================
+// 1.1.11 — MÓC THEO CLASS DÒ ĐƯỢC TRÊN MÁY, không hook theo tên gõ
+// sẵn nữa. Lý do: quạt Wi-Fi ở MÀN HÌNH CHÍNH sống sót qua cả 3 lớp
+// chặn cũ (dữ liệu tổng đài + ẩn cây thanh + lưới alpha theo tên
+// class) kể cả khi độc chiếm đã dập mọi thứ khác. Một %hook ghi sai
+// tên class là im lặng không chạy mà không ai biết. Nay: lúc khởi
+// động, rà danh sách class thật của hệ thống — class nào CÓ THẬT mới
+// móc — và ghi log chứng minh đã móc được những class nào.
+// ============================================================
+
+static NSMutableDictionary<NSString *, NSValue *> *gOrigIMPs = nil;
+static NSMutableSet<NSString *> *gProofLogged = nil;
+
+// Móc một method bằng tay: nếu class chỉ THỪA KẾ method (không tự
+// định nghĩa) thì thêm override vào đúng class đó, không đụng vào
+// bảng method của class cha.
+static BOOL FG5Swizzle(Class cls, SEL sel, IMP newIMP) {
+    if (!cls || !newIMP) return NO;
+    NSString *key = [NSString stringWithFormat:@"%s|%s",
+                     class_getName(cls), sel_getName(sel)];
+    if (gOrigIMPs[key]) return YES;
+    Method m = class_getInstanceMethod(cls, sel);
+    if (!m) return NO;
+    IMP orig = method_getImplementation(m);
+    BOOL own = NO;
+    unsigned int count = 0;
+    Method *list = class_copyMethodList(cls, &count);
+    for (unsigned int i = 0; i < count; i++) {
+        if (method_getName(list[i]) == sel) { own = YES; break; }
+    }
+    if (list) free(list);
+    if (own) {
+        method_setImplementation(m, newIMP);
+    } else {
+        class_addMethod(cls, sel, newIMP, method_getTypeEncoding(m));
+    }
+    gOrigIMPs[key] = [NSValue valueWithPointer:orig];
+    return YES;
+}
+
+// Tìm IMP gốc cho một instance: thử class của nó rồi leo dần lên cha.
+static IMP FG5FindOrig(id obj, const char *selName) {
+    Class c = [obj class];
+    while (c) {
+        NSValue *v = gOrigIMPs[[NSString stringWithFormat:@"%s|%s",
+                                class_getName(c), selName]];
+        if (v) return [v pointerValue];
+        c = class_getSuperclass(c);
+    }
+    return NULL;
+}
+
+// Log chứng minh: mỗi khoá chỉ ghi đúng 1 lần.
+static void FG5ProofLog(NSString *key, NSString *format, ...) {
+    if ([gProofLogged containsObject:key]) return;
+    [gProofLogged addObject:key];
+    va_list args;
+    va_start(args, format);
+    NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+    FG5Log(@"%@", msg);
+}
+
 // Lưới an toàn cho icon Wi-Fi: nếu vì lý do gì đó mục 8 không tắt được ở
 // nguồn, view quạt Wi-Fi vẫn bị ép alpha 0 khi tweak đang chạy.
 static const void *kFG5WifiAlphaKey = &kFG5WifiAlphaKey;
 
-%hook _UIStatusBarWifiSignalView
-
-- (void)layoutSubviews {
-    %orig;
-    UIView *v = (UIView *)self;
+static void FG5ApplyWifiNet(UIView *v) {
     NSNumber *saved = objc_getAssociatedObject(v, kFG5WifiAlphaKey);
     if (gEnabled && gLicensed) {
         if (!saved) {
             objc_setAssociatedObject(v, kFG5WifiAlphaKey, @(v.alpha),
                                      OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
-        v.alpha = 0;
+        if (v.alpha != 0) v.alpha = 0;
+        FG5ProofLog([NSString stringWithFormat:@"wifi|%s|%s",
+                     class_getName([v class]),
+                     class_getName([v.window class])],
+                    @"luoi wifi: da ep alpha 0 — view %s trong cua so %s",
+                    class_getName([v class]),
+                    class_getName([v.window class]));
     } else if (saved) {
         v.alpha = saved.floatValue;
         objc_setAssociatedObject(v, kFG5WifiAlphaKey, nil,
@@ -238,12 +320,12 @@ static const void *kFG5WifiAlphaKey = &kFG5WifiAlphaKey;
     }
 }
 
-%end
-
-// ĐỘC CHIẾM LỚP 2 (1.1.10): ẩn nguyên cây thanh gốc. Giờ và pin gần như
-// không được tổng đài gọi lại _setItem sau khởi động nên ép ở nguồn không
-// đủ — ẩn thẳng view là chắc chắn. Đánh dấu bằng associated object để chỉ
-// khôi phục đúng những view mình đã ẩn.
+// ĐỘC CHIẾM LỚP 2 (từ 1.1.9): ẩn nguyên cây thanh gốc. Giờ và pin gần
+// như không được tổng đài gọi lại _setItem sau khởi động nên ép ở
+// nguồn không đủ — ẩn thẳng view là chắc chắn. Đánh dấu bằng associated
+// object để chỉ khôi phục đúng những view mình đã ẩn. 1.1.11: móc theo
+// class dò được (không %hook theo tên) + log chứng minh lần ẩn đầu
+// tiên của từng class.
 static const void *kFG5BarKilledKey = &kFG5BarKilledKey;
 
 static void FG5ApplyExclusiveBarKill(UIView *bar) {
@@ -252,6 +334,11 @@ static void FG5ApplyExclusiveBarKill(UIView *bar) {
         if (!killed) {
             objc_setAssociatedObject(bar, kFG5BarKilledKey, @YES,
                                      OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            FG5ProofLog([NSString stringWithFormat:@"bar|%s",
+                         class_getName([bar class])],
+                        @"doc chiem: da an thanh goc %s (cua so %s)",
+                        class_getName([bar class]),
+                        class_getName([bar.window class]));
         }
         if (!bar.hidden) bar.hidden = YES;
     } else if (killed) {
@@ -261,23 +348,87 @@ static void FG5ApplyExclusiveBarKill(UIView *bar) {
     }
 }
 
-%hook UIStatusBar_Modern
+#pragma mark - Hàm thay thế cho các móc runtime
 
-- (void)layoutSubviews {
-    %orig;
+static void FG5Hook_BarLayoutSubviews(id self, SEL _cmd) {
+    IMP orig = FG5FindOrig(self, "layoutSubviews");
+    if (orig) ((void (*)(id, SEL))orig)(self, _cmd);
     FG5ApplyExclusiveBarKill((UIView *)self);
 }
 
-%end
-
-%hook _UIStatusBar
-
-- (void)layoutSubviews {
-    %orig;
-    FG5ApplyExclusiveBarKill((UIView *)self);
+static void FG5Hook_WifiLayoutSubviews(id self, SEL _cmd) {
+    IMP orig = FG5FindOrig(self, "layoutSubviews");
+    if (orig) ((void (*)(id, SEL))orig)(self, _cmd);
+    FG5ApplyWifiNet((UIView *)self);
 }
 
-%end
+static void FG5Hook_WifiDidMoveToWindow(id self, SEL _cmd) {
+    IMP orig = FG5FindOrig(self, "didMoveToWindow");
+    if (orig) ((void (*)(id, SEL))orig)(self, _cmd);
+    FG5ApplyWifiNet((UIView *)self);
+}
+
+// Kẹp alpha ngay tại nguồn: ai (kể cả hệ thống) đặt lại alpha cho view
+// quạt trong lúc tweak đang chạy cũng bị đưa về 0.
+static void FG5Hook_WifiSetAlpha(id self, SEL _cmd, CGFloat alpha) {
+    if (gEnabled && gLicensed) alpha = 0;
+    IMP orig = FG5FindOrig(self, "setAlpha:");
+    if (orig) ((void (*)(id, SEL, CGFloat))orig)(self, _cmd, alpha);
+}
+
+#pragma mark - Dò class trên máy + lắp móc runtime
+
+static void FG5InstallRuntimeHooks(void) {
+    if (gOrigIMPs) return;
+    gOrigIMPs = [NSMutableDictionary dictionary];
+    gProofLogged = [NSMutableSet set];
+    NSMutableArray<NSString *> *found = [NSMutableArray array];
+
+    // Class thanh trạng thái (độc chiếm ẩn cả cây)
+    NSArray<NSString *> *barNames = @[@"_UIStatusBar", @"UIStatusBar_Modern",
+                                      @"_UIStatusBar_Modern", @"UIStatusBar"];
+    for (NSString *n in barNames) {
+        Class c = NSClassFromString(n);
+        if (c && FG5Swizzle(c, @selector(layoutSubviews),
+                            (IMP)FG5Hook_BarLayoutSubviews))
+            [found addObject:[NSString stringWithFormat:@"thanh:%@", n]];
+    }
+
+    // Class view quạt Wi-Fi: tên quen thuộc + rà mọi class có tên chứa
+    // WifiSignal / WiFiSignal / WifiItem / WiFiItem trong toàn hệ thống
+    NSMutableArray<NSString *> *wifiNames =
+        [NSMutableArray arrayWithObject:@"_UIStatusBarWifiSignalView"];
+    int nClasses = objc_getClassList(NULL, 0);
+    if (nClasses > 0) {
+        Class *all = (Class *)malloc(sizeof(Class) * (unsigned)nClasses);
+        if (all) {
+            objc_getClassList(all, nClasses);
+            for (int i = 0; i < nClasses; i++) {
+                const char *nm = class_getName(all[i]);
+                if (nm && (strstr(nm, "WifiSignal") || strstr(nm, "WiFiSignal") ||
+                           strstr(nm, "WifiItem") || strstr(nm, "WiFiItem"))) {
+                    NSString *s = [NSString stringWithUTF8String:nm];
+                    if (![wifiNames containsObject:s]) [wifiNames addObject:s];
+                }
+            }
+            free(all);
+        }
+    }
+    for (NSString *n in wifiNames) {
+        Class c = NSClassFromString(n);
+        if (!c) continue;
+        BOOL a = FG5Swizzle(c, @selector(layoutSubviews),
+                            (IMP)FG5Hook_WifiLayoutSubviews);
+        BOOL b = FG5Swizzle(c, @selector(didMoveToWindow),
+                            (IMP)FG5Hook_WifiDidMoveToWindow);
+        BOOL d = FG5Swizzle(c, @selector(setAlpha:),
+                            (IMP)FG5Hook_WifiSetAlpha);
+        if (a || b || d)
+            [found addObject:[NSString stringWithFormat:
+                @"wifi:%@(layout=%d move=%d alpha=%d)", n, a, b, d]];
+    }
+    FG5Log(@"moc runtime: %@", [found componentsJoinedByString:@", "]);
+}
 
 // Khoá/mở màn hình: tổng đài thường tự phát lại các mục — tranh thủ phát
 // lại lệnh của mình để trạng thái ép được áp ngay.
@@ -382,7 +533,7 @@ static BOOL FG5WifiAssociated(void) {
                                                 selector:@selector(tick)
                                                 userInfo:nil
                                                  repeats:YES];
-    FG5Log(@"Fake5G 1.1.10 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
+    FG5Log(@"Fake5G 1.1.11 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
            gLayoutProfilePref, gExclusive, FG5WifiAssociated() ? @"co" : @"khong");
 }
 
@@ -390,10 +541,10 @@ static BOOL FG5WifiAssociated(void) {
     FG5ReloadPrefs();
     FG5RepublishItems();
     [self updateStrip];
-    FG5Log(@"prefs: bat=%d key=%d vach=%d mang=%d anNoSim=%d chiWifi=%d khuon=%@ switcher=%d khoa=%d docchiem=%d",
+    FG5Log(@"prefs: bat=%d key=%d vach=%d mang=%d anNoSim=%d chiWifi=%d khuon=%@ switcher=%d khoa=%d docchiem=%d dich=%.0f/%.0f",
            gEnabled, gLicensed, gFakeBars, gFakeCarrier, gHideNoSim,
            gOnlyOnWifi, gLayoutProfilePref, gShowInSwitcher,
-           gShowOnLockScreen, gExclusive);
+           gShowOnLockScreen, gExclusive, gOffsetX, gOffsetY);
 }
 
 - (void)tick {
@@ -737,6 +888,17 @@ static NSInteger FG5EffectiveProfile(void) {
             self.carrierLabel.frame = CGRectMake(x, y2, cw, 14);
         }
     }
+
+    // Tinh chỉnh vị trí thủ công (2 thanh trượt realtime trong Cài đặt):
+    // dịch cả cụm giả — vạch + nhãn luôn đi cùng nhau; nhà mạng chỉ dịch
+    // theo khi nó nằm CÙNG cụm/hàng với vạch + nhãn (khuôn cổ điển, hoặc
+    // cụm hàng 2 tai trái). Nhà mạng ở hàng 2 riêng (tai phải) giữ nguyên.
+    if (gOffsetX != 0 || gOffsetY != 0) {
+        self.barsView.frame = CGRectOffset(self.barsView.frame, gOffsetX, gOffsetY);
+        self.label.frame = CGRectOffset(self.label.frame, gOffsetX, gOffsetY);
+        if (profile == 0 || row2Cluster)
+            self.carrierLabel.frame = CGRectOffset(self.carrierLabel.frame, gOffsetX, gOffsetY);
+    }
 }
 
 @end
@@ -754,6 +916,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 %ctor {
     @autoreleasepool {
         %init;
+        FG5InstallRuntimeHooks();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                         NULL, FG5PrefsChangedCallback,
                                         FG5_PREFS_CHANGED_NOTIFICATION,

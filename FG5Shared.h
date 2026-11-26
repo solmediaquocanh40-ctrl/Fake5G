@@ -1,4 +1,4 @@
-// FG5Shared.h — Fake5G 1.1.10 (com.anhdang.fake5g)
+// FG5Shared.h — Fake5G 1.1.11 (com.anhdang.fake5g)
 // Khai báo dùng chung giữa tweak (SpringBoard) và prefs bundle (Cài đặt).
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
@@ -27,6 +27,8 @@ NS_ASSUME_NONNULL_BEGIN
 #define FG5_KEY_SIDE_CLASSIC  @"sideClassic"
 #define FG5_KEY_SIDE_NOTCH    @"sideNotch"
 #define FG5_KEY_SIDE_ISLAND   @"sideIsland"
+#define FG5_KEY_OFFSET_X      @"offsetX"
+#define FG5_KEY_OFFSET_Y      @"offsetY"
 // Khoá nội bộ của hệ bản quyền
 #define FG5_KEY_LICENSE_KEY   @"licenseKey"
 #define FG5_KEY_TRIAL_START   @"trialStart"

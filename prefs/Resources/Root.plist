@@ -222,6 +222,50 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>TINH CHỈNH VỊ TRÍ CỤM GIẢ</string>
+			<key>footerText</key>
+			<string>Kéo là cụm vạch sóng + chữ dịch chuyển ngay trên thanh trạng thái (áp dụng trực tiếp, không cần respring). Nhà mạng chỉ dịch theo khi nằm cùng cụm với vạch + chữ. Để cả hai ở giữa (0) là vị trí mặc định.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<real>0</real>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>offsetX</string>
+			<key>label</key>
+			<string>Dịch ngang (trái ↔ phải)</string>
+			<key>min</key>
+			<real>-40</real>
+			<key>max</key>
+			<real>40</real>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<real>0</real>
+			<key>defaults</key>
+			<string>com.anhdang.fake5g</string>
+			<key>key</key>
+			<string>offsetY</string>
+			<key>label</key>
+			<string>Dịch dọc (lên ↔ xuống)</string>
+			<key>min</key>
+			<real>-10</real>
+			<key>max</key>
+			<real>10</real>
+			<key>PostNotification</key>
+			<string>com.anhdang.fake5g/prefsChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>NHÃN THAY ICON WI-FI</string>
 			<key>footerText</key>
 			<string>Chọn None (trống) là ẩn hẳn nhãn, thắng cả ô tự nhập. Ô tự nhập có chữ thì dùng ô tự nhập. Chữ dài quá 6–8 ký tự sẽ chật trên thanh trạng thái.</string>
@@ -428,7 +472,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>Fake5G 1.1.10 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
+			<string>Fake5G 1.1.11 — chỉ giả hiển thị, tốc độ mạng thật không đổi. Log: /var/mobile/Documents/Fake5G.log</string>
 		</dict>
 		<dict>
 			<key>cell</key>

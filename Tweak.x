@@ -1,4 +1,11 @@
-// Tweak.x — Fake5G 1.1.11 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+// Tweak.x — Fake5G 1.1.12 (com.anhdang.fake5g) — LÕI HIỂN THỊ (SpringBoard)
+//
+// BẢN 1.1.12: đổi tên nốt icon trong prefs/Resources (icon.png →
+// Fake5GPrefs.png, icon@2x.png → Fake5GPrefs@2x.png) — toàn cây không
+// còn file nào tên icon.png. Lý do: bản build 1.1.11 trên repo của anh
+// bị dpkg từ chối vì một icon.png tên chung sót trong thư mục
+// PreferenceLoader/Preferences va với CallForward 1.0.1 (bài học 43).
+// Code giữ nguyên như 1.1.11 dưới đây.
 //
 // BẢN 1.1.11 (theo bằng chứng máy thật trên 1.1.10 + mục anh Quoc thêm):
 //   1. PIN SWITCHER: thu lệnh phát lại ở chế độ thường về 10 mục như
@@ -49,7 +56,7 @@
 // -[SBStatusBarStateAggregator updateStatusBarItem:] mỗi khi prefs đổi,
 // ở nhịp đầu và khi khoá/mở màn hình. Dò Wi-Fi bằng SBWiFiManager
 // isAssociated mỗi giây (1.1.8). Lưới an toàn: móc runtime vào class
-// view quạt Wi-Fi dò được trên máy, ép alpha 0 (1.1.11).
+// view quạt Wi-Fi dò được trên máy, ép alpha 0 (1.1.12).
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
@@ -88,7 +95,7 @@
 
 #pragma mark - Trạng thái (nạp từ prefs)
 
-static BOOL gEnabled = NO; // 1.1.11: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
+static BOOL gEnabled = NO; // 1.1.12: cài mới = CHƯA bật, vào Cài đặt bật lên mới dùng
 static BOOL gLicensed = NO;
 static BOOL gFakeBars = YES;
 static BOOL gFakeCarrier = YES;
@@ -187,10 +194,10 @@ static UIFont *FG5BorrowStatusFont(void) {
 }
 
 // Phát lại lệnh cập nhật để tổng đài áp trạng thái đã ép.
-// 1.1.11 THU VỀ PHẠM VI ĐÃ CHỨNG MINH: chế độ thường chỉ phát 0–10 như
+// 1.1.12 THU VỀ PHẠM VI ĐÃ CHỨNG MINH: chế độ thường chỉ phát 0–10 như
 // 1.1.7 (bản đó pin ở App Switcher còn nguyên trong ảnh nghiệm thu);
 // việc mở rộng ra cả 45 mục ở mọi chế độ (từ 1.1.9) là nghi phạm số 1
-// làm pin gốc chết ở switcher (máy thật 1.1.11, độc chiếm TẮT vẫn mất
+// làm pin gốc chết ở switcher (máy thật 1.1.12, độc chiếm TẮT vẫn mất
 // pin). Độc chiếm mới phủ 0–44.
 static void FG5RepublishItems(void) {
     if (!gAggregator) return;
@@ -233,7 +240,7 @@ static BOOL FG5ItemForcedOff(int item) {
 %end
 
 // ============================================================
-// 1.1.11 — MÓC THEO CLASS DÒ ĐƯỢC TRÊN MÁY, không hook theo tên gõ
+// 1.1.12 — MÓC THEO CLASS DÒ ĐƯỢC TRÊN MÁY, không hook theo tên gõ
 // sẵn nữa. Lý do: quạt Wi-Fi ở MÀN HÌNH CHÍNH sống sót qua cả 3 lớp
 // chặn cũ (dữ liệu tổng đài + ẩn cây thanh + lưới alpha theo tên
 // class) kể cả khi độc chiếm đã dập mọi thứ khác. Một %hook ghi sai
@@ -323,7 +330,7 @@ static void FG5ApplyWifiNet(UIView *v) {
 // ĐỘC CHIẾM LỚP 2 (từ 1.1.9): ẩn nguyên cây thanh gốc. Giờ và pin gần
 // như không được tổng đài gọi lại _setItem sau khởi động nên ép ở
 // nguồn không đủ — ẩn thẳng view là chắc chắn. Đánh dấu bằng associated
-// object để chỉ khôi phục đúng những view mình đã ẩn. 1.1.11: móc theo
+// object để chỉ khôi phục đúng những view mình đã ẩn. 1.1.12: móc theo
 // class dò được (không %hook theo tên) + log chứng minh lần ẩn đầu
 // tiên của từng class.
 static const void *kFG5BarKilledKey = &kFG5BarKilledKey;
@@ -533,7 +540,7 @@ static BOOL FG5WifiAssociated(void) {
                                                 selector:@selector(tick)
                                                 userInfo:nil
                                                  repeats:YES];
-    FG5Log(@"Fake5G 1.1.11 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
+    FG5Log(@"Fake5G 1.1.12 khoi dong — engine tong dai + dai phu (doc chiem 2 lop), profile: %@, docchiem=%d wifi=%@",
            gLayoutProfilePref, gExclusive, FG5WifiAssociated() ? @"co" : @"khong");
 }
 

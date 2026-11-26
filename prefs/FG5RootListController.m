@@ -1,4 +1,4 @@
-// FG5RootListController.m — Fake5G 1.1.11
+// FG5RootListController.m — Fake5G 1.1.12
 // Trang Cài đặt của Fake5G. Từ 1.1.4 theo yêu cầu của anh Quoc: CHƯA kích
 // hoạt key thì không vào được phần điều chỉnh — mở trang lên là phủ mờ +
 // hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
@@ -175,7 +175,7 @@ extern char **environ;
     // ô có key: trạng thái ô trên màn hình và dữ liệu khớp nhau ngay tại
     // chỗ. Cách cũ (xoá key trần rồi reloadSpecifiers) bị trang ghi ngược
     // giá trị ON của ô gạt đang hiện (Bật Fake5G) trở lại vào prefs — máy
-    // thật 1.1.11 chứng minh: reset xong tweak vẫn đọc bat=1, chạy tiếp
+    // thật 1.1.12 chứng minh: reset xong tweak vẫn đọc bat=1, chạy tiếp
     // bằng mặc định. Bảng mặc định này phải khớp Root.plist từng ô.
     NSDictionary<NSString *, id> *defaults = @{
         FG5_KEY_ENABLED: @NO,

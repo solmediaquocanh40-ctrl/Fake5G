@@ -1,4 +1,4 @@
-# Fake5G 1.1.11 — com.anhdang.fake5g
+# Fake5G 1.1.12 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -14,13 +14,26 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
 
+## 1.1.12 — đổi tên nốt icon trong bundle, toàn cây hết file tên icon.png
+
+Bản build 1.1.11 bị dpkg từ chối khi cài: một file `icon.png` tên
+chung trong thư mục dùng chung `PreferenceLoader/Preferences` va với
+package CallForward 1.0.1 (cùng một đường dẫn, hai package). Từ 1.1.10
+icon ở layout đã mang tên riêng `Fake5GPrefs.png`, nhưng trong
+`prefs/Resources/` vẫn còn `icon.png`/`icon@2x.png` — 1.1.12 đổi tên
+nốt thành `Fake5GPrefs.png`/`Fake5GPrefs@2x.png` để **toàn bộ cây
+nguồn không còn file nào tên icon.png**. Code giữ nguyên như 1.1.11.
+Lưu ý: nếu trong repo vẫn còn `icon.png`/`icon@2x.png` sót ở
+`layout/Library/PreferenceLoader/Preferences/` từ các bản ≤1.1.9 thì
+phải xoá hai file đó trong cùng commit (up web không tự xoá file cũ).
+
 ## 1.1.11 — pin switcher + quạt Wi-Fi màn hình chính (dò class trên máy) + thanh trượt chỉnh vị trí
 
 Ba việc, đều từ bằng chứng máy thật trên 1.1.10:
 
 1. **Pin gốc chết ở App Switcher (độc chiếm TẮT)**: đối chứng — 1.1.7
    (lệnh phát lại chỉ phủ 10 mục đầu) pin ở switcher còn nguyên; từ
-   1.1.9 lệnh phát lại phủ cả 45 mục ở mọi chế độ thì pin mất. 1.1.11
+   1.1.9 lệnh phát lại phủ cả 45 mục ở mọi chế độ thì pin mất. 1.1.12
    thu phát lại ở chế độ thường về đúng 10 mục; độc chiếm mới phủ 0–44.
 2. **Quạt Wi-Fi ở màn hình chính sống sót mọi lớp chặn** (kể cả độc
    chiếm, vốn đã dập được mọi thứ khác): bỏ hẳn hook theo TÊN class —
@@ -180,7 +193,7 @@ tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do qu
 bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
 đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
 hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
-trong gói 1.1.4/1.1.11 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+trong gói 1.1.4/1.1.12 nhưng app Cài đặt đang chạy giữ bundle cũ trong
 bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
@@ -222,7 +235,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.11 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.12 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

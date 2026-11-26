@@ -1,4 +1,4 @@
-// FG5License.m — Fake5G 1.1.12
+// FG5License.m — Fake5G 1.1.13
 // Gồm: tiện ích prefs + log dùng chung (FG5Shared) và hệ bản quyền (FG5License).
 #import "FG5Shared.h"
 #import "FG5License.h"
@@ -65,7 +65,7 @@ void FG5PrefSet(NSString *key, id value) {
 }
 
 NSString *FG5EffectiveLabel(void) {
-    // Chọn "none" thì ẩn hẳn — thắng cả ô tự nhập (yêu cầu của anh Quoc, 1.1.12)
+    // Chọn "none" thì ẩn hẳn — thắng cả ô tự nhập (yêu cầu của anh Quoc, 1.1.13)
     if ([FG5PrefString(FG5_KEY_LABEL_PRESET, @"5G") isEqualToString:@"none"]) return @"";
     NSString *custom = [FG5PrefString(FG5_KEY_LABEL_CUSTOM, @"")
         stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -93,7 +93,7 @@ NSInteger FG5EffectiveBarsCount(void) {
 
 // Dấu vân của một key (SHA-256 rút gọn) — để mốc kích hoạt GẮN với đúng key:
 // reset xoá key nhưng mốc + dấu vân còn nguyên ở 3 nơi, nhập lại CÙNG key thì
-// hạn vẫn tính từ lần kích hoạt đầu tiên của key đó (yêu cầu của anh, 1.1.12).
+// hạn vẫn tính từ lần kích hoạt đầu tiên của key đó (yêu cầu của anh, 1.1.13).
 static NSString *FG5KeyHash(NSString *key) {
     NSData *d = [[key uppercaseString] dataUsingEncoding:NSUTF8StringEncoding];
     unsigned char digest[CC_SHA256_DIGEST_LENGTH];
@@ -377,7 +377,7 @@ BOOL FG5LicenseTryActivateKey(NSString *key, NSString **nameOut, NSString **erro
             // Chính key này đã từng kích hoạt: GIỮ mốc đầu tiên — reset xoá
             // key rồi nhập lại cũng không kéo dài được hạn (yêu cầu của anh).
         } else if (act > 0 && actHash.length == 0 && [oldKey isEqualToString:clean]) {
-            actHash = hash; // mốc cũ của bản trước 1.1.12, gắn cho chính key đang lưu
+            actHash = hash; // mốc cũ của bản trước 1.1.13, gắn cho chính key đang lưu
         } else {
             act = effNow;   // key phụ mới: 3 ngày tính từ bây giờ
             actHash = hash;

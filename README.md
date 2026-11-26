@@ -1,4 +1,4 @@
-# Fake5G 1.1.5 — com.anhdang.fake5g
+# Fake5G 1.1.6 — com.anhdang.fake5g
 
 Tweak giả **hiển thị** trên thanh trạng thái cho máy jailbreak (mục tiêu chính:
 iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1).
@@ -14,6 +14,32 @@ iPhone 8 / iOS 16.7.12 / Dopamine rootless; test kèm iPhone 12 Pro / iOS 16.3.1
 - Mọi thay đổi trong Cài đặt áp dụng ngay, không cần respring.
 - Chỉ giả hiển thị — kết nối Wi-Fi/dữ liệu thật giữ nguyên 100%, tốc độ không đổi.
 
+## 1.1.6 — xử lý riêng màn hình chính + sửa nhận diện nhà mạng
+
+Bản đồ quét của 1.1.5 (55 lần quét trên máy thật) đã kết luận dứt
+điểm: chỉ 3 cửa sổ từng giữ thanh trạng thái thật — SBCoverSheetWindow,
+SBMainSwitcherWindow, SBControlCenterWindow, và chỉ trong lúc bề mặt
+đó đang hiện. SBHomeScreenWindow hiện ra 44 lần, cả 44 lần đều 0 view
+trạng thái; kho ReusePool luôn bị ẩn. Thanh ở màn hình chính vì thế
+không nằm trong cây view của cửa sổ nào — nó được hiển thị qua một
+view chủ riêng trong cửa sổ màn hình chính. Bản này:
+
+1. **SBHomeScreenWindow thành bề mặt riêng dù 0 điểm**: tìm view chủ
+   của thanh gốc (view sát mép trên, cao 15–65pt, rộng ≥60% cửa sổ,
+   ưu tiên class Replicant/StatusBar) và **ẩn nó đi** — ẩn toàn bộ
+   phần gốc khi tweak chạy, đúng yêu cầu của anh — rồi vẽ nhãn 5G +
+   vạch sóng + tên nhà mạng theo vị trí profile như các bề mặt khác.
+   Log ghi rõ view chủ tìm được (`man hinh chinh: an view chu ...`)
+   hoặc báo không thấy kèm dump toàn cây của cửa sổ màn hình chính +
+   cây của kho ReusePool để đối chiếu.
+2. **Sửa nhận diện nhà mạng theo vị trí**: thêm cận dưới cho rect quy
+   đổi — log 1.1.5 bắt được một lần nhận diện sai ở y=-821 (màn hình
+   khoá đang trượt đi).
+3. Realtime: thay đổi trong Cài đặt vốn đã áp dụng ngay trong tích tắc
+   (prefsChanged gọi tick ngay) trên các bề mặt bắt được; cảm giác
+   "không realtime" trước giờ là do màn hình chính chưa có bề mặt —
+   bản này xử lý chính chỗ đó.
+
 ## 1.1.5 — quét dày hơn + mở cả kho ReusePool + bản đồ điểm
 
 Log máy thật của 1.1.4: engine đa bề mặt CHẠY (bắt được thanh trong
@@ -26,7 +52,7 @@ tính cả ReusePool thành một bề mặt ứng viên, và ghi log `ban do qu
 bản đồ điểm của TỪNG cửa sổ (wifi/cellular/số StringView) mỗi khi bản
 đồ thay đổi — log tới sẽ chỉ thẳng cửa sổ nào đang giữ thanh của màn
 hình chính. Lưu ý khi test: option "Hiện trong App Switcher" có sẵn
-trong gói 1.1.4/1.1.5 nhưng app Cài đặt đang chạy giữ bundle cũ trong
+trong gói 1.1.4/1.1.6 nhưng app Cài đặt đang chạy giữ bundle cũ trong
 bộ nhớ — phải vuốt tắt hẳn Cài đặt rồi mở lại mới thấy công tắc mới.
 
 ## 1.1.4 — mọi bề mặt + option Switcher + khoá trang bằng key
@@ -68,7 +94,7 @@ trí, profile tai thỏ đúng.
 Bản 1.1.1 loại mọi cửa sổ cao trên 70pt — nhưng log cho thấy SpringBoard
 trên iOS 16 không có cửa sổ thanh trạng thái riêng thấp nào: cả 15 cửa sổ
 đều cao bằng màn hình (844) hoặc 340. Hệ quả: 1.1.1 không bám được vào
-cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.5 đổi hẳn cách tìm: quét mọi
+cửa sổ nào, icon Wi-Fi không đổi. Bản 1.1.6 đổi hẳn cách tìm: quét mọi
 cửa sổ (bỏ cửa sổ đang ẩn) và bám theo cửa sổ chứa icon Wi-Fi thật; kho
 ReusePool chỉ là dự phòng cuối. Nhận diện dòng máy cũng đổi sang
 `safeAreaInsets.top` thay cho chiều cao cửa sổ. Log mới ghi thêm chuỗi

@@ -1,7 +1,10 @@
-// FG5RootListController.m — Fake5G 1.1.3
-// Trang Cài đặt của Fake5G. Khi hết hạn dùng thử / key hết hạn: mở trang lên
-// là hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
-// tạm dừng trong lúc đang gõ key) và phủ mờ trang như mẫu ZUS.
+// FG5RootListController.m — Fake5G 1.1.4
+// Trang Cài đặt của Fake5G. Từ 1.1.4 theo yêu cầu của anh Quoc: CHƯA kích
+// hoạt key thì không vào được phần điều chỉnh — mở trang lên là phủ mờ +
+// hiện popup Active (OK = kiểm key, Huỷ = đóng; tự tắt sau 30 giây, đếm
+// tạm dừng trong lúc đang gõ key) như mẫu ZUS. Dùng thử 3 ngày chỉ chạy
+// phần hiển thị trên thanh trạng thái bằng cấu hình sẵn có, không mở
+// trang điều chỉnh.
 #import "FG5RootListController.h"
 #import "../FG5Shared.h"
 #import "../FG5License.h"
@@ -25,7 +28,7 @@ extern char **environ;
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    if (FG5LicenseActive()) {
+    if (FG5LicenseHasActiveKey()) {
         [self removeExpiredOverlay];
         self.popupShownThisAppear = NO;
     } else {
@@ -48,7 +51,9 @@ extern char **environ;
     blur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     UILabel *label = [[UILabel alloc] initWithFrame:blur.contentView.bounds];
     label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    label.text = @"Đã hết hạn dùng thử\nChạm để nhập key kích hoạt";
+    label.text = (FG5LicenseCurrentState(NULL, NULL) == FG5LicStateTrial)
+        ? @"Đang dùng thử — nhập key để mở khoá điều chỉnh\nChạm để nhập key kích hoạt"
+        : @"Đã hết hạn dùng thử\nChạm để nhập key kích hoạt";
     label.numberOfLines = 2;
     label.textAlignment = NSTextAlignmentCenter;
     label.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];

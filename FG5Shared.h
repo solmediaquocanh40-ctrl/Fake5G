@@ -1,4 +1,4 @@
-// FG5Shared.h — Fake5G 1.1.3 (com.anhdang.fake5g)
+// FG5Shared.h — Fake5G 1.1.4 (com.anhdang.fake5g)
 // Khai báo dùng chung giữa tweak (SpringBoard) và prefs bundle (Cài đặt).
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 #define FG5_KEY_CARRIER_CUSTOM @"carrierCustom"
 #define FG5_KEY_HIDE_NOSIM    @"hideNoSim"
 #define FG5_KEY_LAYOUT_PROFILE @"layoutProfile"
+#define FG5_KEY_SHOW_IN_SWITCHER @"showInSwitcher"
 // Khoá nội bộ của hệ bản quyền
 #define FG5_KEY_LICENSE_KEY   @"licenseKey"
 #define FG5_KEY_TRIAL_START   @"trialStart"

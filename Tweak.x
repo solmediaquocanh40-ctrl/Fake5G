@@ -1,4 +1,4 @@
-// Tweak.x — Fake5G 1.1.3 (com.anhdang.fake5g)
+// Tweak.x — Fake5G 1.1.4 (com.anhdang.fake5g)
 // Giả hiển thị trên thanh trạng thái: thay icon Wi-Fi bằng nhãn chữ tuỳ chọn
 // (4G/5G/tự nhập), hiện vạch sóng giả + tên nhà mạng giả cho máy không SIM,
 // ẩn chữ "Không có SIM". Chỉ giả HIỂN THỊ — kết nối thật giữ nguyên 100%.
@@ -22,6 +22,7 @@ static BOOL gFakeBars = YES;
 static BOOL gFakeCarrier = YES;
 static BOOL gHideNoSim = YES;
 static BOOL gOnlyOnWifi = YES;
+static BOOL gShowInSwitcher = YES;
 static NSString *gLayoutPref = @"auto";
 
 // Profile khung màn hình: 0 = cổ điển (nút Home), 1 = tai thỏ, 2 = Dynamic Island
@@ -56,29 +57,42 @@ static BOOL FG5IsNoSimText(NSString *text) {
     return [set containsObject:text];
 }
 
-@interface FG5Engine : NSObject
+// Một "bề mặt" = một cửa sổ chứa một thanh trạng thái riêng (1.1.4: iOS
+// giữ nhiều thanh trạng thái, mỗi bề mặt một thanh — màn hình khoá, màn
+// hình chính, switcher...). Mỗi bề mặt có bộ lớp phủ + view neo riêng.
+@interface FG5Surface : NSObject
+@property (nonatomic, weak) UIWindow *window;
 @property (nonatomic, strong) UILabel *wifiLabel;
 @property (nonatomic, strong) UIView *barsView;
 @property (nonatomic, strong) UILabel *carrierLabel;
-@property (nonatomic, strong) NSTimer *timer;
+@property (nonatomic, strong) UIView *wifi;
+@property (nonatomic, strong) UIView *cellular;
+@property (nonatomic, strong) NSArray *strings;
 @property (nonatomic, assign) BOOL applied;
+@end
+
+@interface FG5Engine : NSObject
+@property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, assign) BOOL dumpedOnce;
 @property (nonatomic, assign) BOOL loggedProfile;
 @property (nonatomic, assign) BOOL loggedWindows;
 @property (nonatomic, assign) NSInteger dumpBudget;
-@property (nonatomic, weak) UIWindow *activeWindow;
+@property (nonatomic, assign) NSInteger tickCount;
+@property (nonatomic, strong) NSMutableDictionary<NSValue *, FG5Surface *> *surfaces;
 @property (nonatomic, strong) NSMutableSet<NSString *> *loggedTexts;
 - (void)start;
 - (void)tick;
 - (void)prefsChanged;
 - (void)reloadPrefs;
-- (void)restoreInWindow:(UIWindow *)window;
+- (void)scanSurfaces;
+- (void)applyToSurface:(FG5Surface *)surface;
+- (void)restoreSurface:(FG5Surface *)surface;
+- (BOOL)isSwitcherWindow:(UIWindow *)window;
 - (NSInteger)effectiveProfileForWindow:(UIWindow *)window;
 - (void)walkView:(UIView *)view into:(NSMutableDictionary *)found depth:(NSInteger)depth;
 - (void)setSubviewsAlpha:(UIView *)view alpha:(CGFloat)alpha;
 - (void)dumpTree:(UIView *)view depth:(NSInteger)depth;
 - (NSArray<UIWindow *> *)allWindows;
-- (UIWindow *)bestStatusBarWindowWithFound:(NSMutableDictionary **)foundOut;
 - (NSInteger)scoreForFound:(NSDictionary *)found;
 - (NSString *)ancestorChainOfView:(UIView *)view;
 - (UIFont *)statusBarFontFromStrings:(NSArray *)strings size:(CGFloat)size;
@@ -94,12 +108,16 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     });
 }
 
+@implementation FG5Surface
+@end
+
 @implementation FG5Engine
 
 - (void)start {
     self.loggedTexts = [NSMutableSet set];
+    self.surfaces = [NSMutableDictionary dictionary];
     [self reloadPrefs];
-    FG5Log(@"Fake5G 1.1.3 khoi dong — ban quyen: %@", FG5LicenseStatusText());
+    FG5Log(@"Fake5G 1.1.4 khoi dong — ban quyen: %@", FG5LicenseStatusText());
     self.timer = [NSTimer scheduledTimerWithTimeInterval:1.0
                                                   target:self
                                                 selector:@selector(tick)
@@ -114,15 +132,16 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     gFakeCarrier = FG5PrefBool(FG5_KEY_FAKE_CARRIER, YES);
     gHideNoSim = FG5PrefBool(FG5_KEY_HIDE_NOSIM, YES);
     gOnlyOnWifi = FG5PrefBool(FG5_KEY_ONLY_ON_WIFI, YES);
+    gShowInSwitcher = FG5PrefBool(FG5_KEY_SHOW_IN_SWITCHER, YES);
     gLayoutPref = FG5PrefString(FG5_KEY_LAYOUT_PROFILE, @"auto");
     gLicensed = FG5LicenseActive();
 }
 
 - (void)prefsChanged {
     [self reloadPrefs];
-    FG5Log(@"prefs thay doi — enabled=%d licensed=%d nhan='%@' nha mang='%@' vach=%ld",
+    FG5Log(@"prefs thay doi — enabled=%d licensed=%d nhan='%@' nha mang='%@' vach=%ld switcher=%d",
            gEnabled, gLicensed, FG5EffectiveLabel(), FG5EffectiveCarrier(),
-           (long)FG5EffectiveBarsCount());
+           (long)FG5EffectiveBarsCount(), gShowInSwitcher);
     [self tick];
 }
 
@@ -176,59 +195,61 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 }
 
 // Lịch sử chọn cửa sổ: 1.0.0 bắt nhầm SBStatusBarReusePoolWindow (kho chứa
-// thanh trạng thái tái sử dụng, rỗng). 1.1.1 sửa bằng cách chỉ xét cửa sổ
-// cao <= 70pt — NHƯNG log máy thật 26/11 chứng minh iOS 16 SpringBoard
-// KHÔNG có cửa sổ trạng thái riêng nào thấp cả: cả 15 cửa sổ đều cao bằng
-// màn hình (844) hoặc 340, nên 1.1.1 loại sạch mọi cửa sổ và không bám
-// được vào đâu. Cách đúng từ 1.1.2: tìm theo VIEW NEO — quét mọi cửa sổ
-// (bỏ cửa sổ đang ẩn), cửa sổ nào chứa icon Wi-Fi thật thì bám cửa sổ đó;
-// kho ReusePool chỉ dùng khi không cửa sổ nào khác có view trạng thái.
-- (UIWindow *)bestStatusBarWindowWithFound:(NSMutableDictionary **)foundOut {
-    // Đường nhanh: cửa sổ đang bám mà còn icon Wi-Fi thì giữ nguyên
-    if (self.activeWindow &&
-        ![NSStringFromClass([self.activeWindow class]) containsString:@"ReusePool"] &&
-        !self.activeWindow.hidden) {
-        NSMutableDictionary *found = [NSMutableDictionary dictionary];
-        found[@"strings"] = [NSMutableArray array];
-        [self walkView:(UIView *)self.activeWindow into:found depth:0];
-        if (found[@"wifi"]) {
-            if (foundOut) *foundOut = found;
-            return self.activeWindow;
-        }
-    }
-    UIWindow *best = nil;
-    NSMutableDictionary *bestFound = nil;
-    NSInteger bestScore = 0;
-    UIWindow *poolBest = nil;
-    NSMutableDictionary *poolFound = nil;
-    NSInteger poolScore = 0;
+// thanh trạng thái tái sử dụng, rỗng). 1.1.1 lọc cửa sổ theo chiều cao
+// <= 70pt — log máy thật chứng minh iOS 16 SpringBoard không có cửa sổ
+// trạng thái thấp nào (cả 15 cửa sổ đều cao bằng màn hình) nên loại sạch.
+// 1.1.2 tìm theo VIEW NEO và bám được thanh trong SBCoverSheetWindow —
+// nhưng máy thật cho thấy thanh đó chỉ phủ khi ở màn hình khoá/trong app,
+// còn MÀN HÌNH CHÍNH và SWITCHER dùng thanh trạng thái RIÊNG của chúng.
+// Từ 1.1.4: quét mọi cửa sổ, cửa sổ nào chứa view trạng thái thì thành
+// một bề mặt riêng và áp dụng cho TẤT CẢ bề mặt cùng lúc.
+- (BOOL)isSwitcherWindow:(UIWindow *)window {
+    return [NSStringFromClass([window class]) containsString:@"MainSwitcher"];
+}
+
+- (void)scanSurfaces {
+    NSMutableSet<NSValue *> *seen = [NSMutableSet set];
     for (UIWindow *w in [self allWindows]) {
         if (w.hidden || w.alpha < 0.01) continue;
+        NSString *cls = NSStringFromClass([w class]);
+        if ([cls containsString:@"ReusePool"]) continue;
         NSMutableDictionary *found = [NSMutableDictionary dictionary];
         found[@"strings"] = [NSMutableArray array];
         [self walkView:(UIView *)w into:found depth:0];
-        NSInteger score = [self scoreForFound:found];
-        if (score == 0) continue;
-        if ([NSStringFromClass([w class]) containsString:@"ReusePool"]) {
-            if (score > poolScore) {
-                poolScore = score;
-                poolBest = w;
-                poolFound = found;
+        if ([self scoreForFound:found] == 0) continue;
+        NSValue *key = [NSValue valueWithNonretainedObject:w];
+        [seen addObject:key];
+        FG5Surface *surface = self.surfaces[key];
+        if (!surface) {
+            surface = [[FG5Surface alloc] init];
+            surface.window = w;
+            self.surfaces[key] = surface;
+            FG5Log(@"them be mat: %@ frame=%@", cls, NSStringFromCGRect(w.frame));
+            if (found[@"wifi"]) {
+                FG5Log(@"chuoi view cha cua icon Wi-Fi (%@): %@", cls,
+                       [self ancestorChainOfView:found[@"wifi"]]);
             }
-            continue;
         }
-        if (score > bestScore) {
-            bestScore = score;
-            best = w;
-            bestFound = found;
+        surface.wifi = found[@"wifi"];
+        surface.cellular = found[@"cellular"];
+        surface.strings = found[@"strings"];
+    }
+    // Bề mặt không còn trong danh sách cửa sổ → khôi phục nguyên trạng + bỏ
+    for (NSValue *key in [self.surfaces allKeys]) {
+        if (![seen containsObject:key]) {
+            FG5Surface *surface = self.surfaces[key];
+            if (surface.applied) [self restoreSurface:surface];
+            [self.surfaces removeObjectForKey:key];
         }
     }
-    if (!best && poolBest) {
-        best = poolBest;
-        bestFound = poolFound;
+    if (self.surfaces.count == 0 && !self.loggedWindows) {
+        self.loggedWindows = YES;
+        FG5Log(@"chua thay be mat nao — tat ca cua so:");
+        for (UIWindow *w in [self allWindows]) {
+            FG5Log(@"  window %@ frame=%@", NSStringFromClass([w class]),
+                   NSStringFromCGRect(w.frame));
+        }
     }
-    if (foundOut) *foundOut = bestFound;
-    return best;
 }
 
 - (NSInteger)effectiveProfileForWindow:(UIWindow *)window {
@@ -268,7 +289,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
 }
 
 - (void)dumpTree:(UIView *)view depth:(NSInteger)depth {
-    // Trần 220 dòng: từ 1.1.3 cửa sổ bám được có thể là cửa sổ toàn màn hình
+    // Trần 220 dòng: từ 1.1.2 cửa sổ bám được có thể là cửa sổ toàn màn hình
     // (cây view rất lớn), không trần thì log ngập và máy chậm hẳn.
     if (!view || depth > 7 || self.dumpBudget <= 0) return;
     self.dumpBudget--;
@@ -293,8 +314,15 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     return [UIColor blackColor];
 }
 
-- (void)restoreInWindow:(UIWindow *)window {
-    if (!window) return;
+- (void)restoreSurface:(FG5Surface *)surface {
+    surface.wifiLabel.hidden = YES;
+    surface.barsView.hidden = YES;
+    surface.carrierLabel.hidden = YES;
+    UIWindow *window = surface.window;
+    if (!window) {
+        surface.applied = NO;
+        return;
+    }
     NSMutableDictionary *found = [NSMutableDictionary dictionary];
     found[@"strings"] = [NSMutableArray array];
     [self walkView:(UIView *)window into:found depth:0];
@@ -313,7 +341,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             @try { [sv setValue:orig forKey:@"text"]; } @catch (NSException *e) {}
         }
     }
-    self.applied = NO;
+    surface.applied = NO;
 }
 
 - (void)tick {
@@ -323,30 +351,39 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     }
     BOOL shouldApply = gEnabled && gLicensed;
     if (!shouldApply) {
-        if (self.applied && self.activeWindow) [self restoreInWindow:self.activeWindow];
-        self.wifiLabel.hidden = YES;
-        self.barsView.hidden = YES;
-        self.carrierLabel.hidden = YES;
-        return;
-    }
-    NSMutableDictionary *found = nil;
-    UIWindow *window = [self bestStatusBarWindowWithFound:&found];
-    if (!window || !found) {
-        if (!self.loggedWindows) {
-            self.loggedWindows = YES;
-            FG5Log(@"chua thay cua so thanh trang thai phu hop — tat ca cua so:");
-            for (UIWindow *w in [self allWindows]) {
-                FG5Log(@"  window %@ frame=%@", NSStringFromClass([w class]),
-                       NSStringFromCGRect(w.frame));
-            }
+        for (FG5Surface *s in [self.surfaces allValues]) {
+            if (s.applied) [self restoreSurface:s];
         }
         return;
     }
-    self.activeWindow = window;
-    // Lớp phủ phải nằm trong đúng cửa sổ đã chọn (cửa sổ có thể đổi giữa các lần)
-    for (UIView *overlay in @[self.wifiLabel ?: [NSNull null],
-                              self.barsView ?: [NSNull null],
-                              self.carrierLabel ?: [NSNull null]]) {
+    self.tickCount++;
+    // Quét lại toàn bộ bề mặt: mỗi 10 giây, khi chưa có bề mặt nào, hoặc
+    // khi một bề mặt cũ đã chết (cửa sổ mất / view Wi-Fi bị thay mới)
+    BOOL stale = NO;
+    for (FG5Surface *s in [self.surfaces allValues]) {
+        if (!s.window || (s.wifi && s.wifi.window != s.window)) stale = YES;
+    }
+    if (stale || self.surfaces.count == 0 || self.tickCount % 10 == 0) {
+        [self scanSurfaces];
+    }
+    for (FG5Surface *surface in [self.surfaces allValues]) {
+        if (!surface.window) continue;
+        if ([self isSwitcherWindow:surface.window] && !gShowInSwitcher) {
+            // Option "Hiện trong App Switcher" đang tắt: bề mặt này giữ gốc
+            if (surface.applied) [self restoreSurface:surface];
+            continue;
+        }
+        [self applyToSurface:surface];
+    }
+}
+
+- (void)applyToSurface:(FG5Surface *)surface {
+    UIWindow *window = surface.window;
+    if (!window) return;
+    // Lớp phủ phải nằm trong đúng cửa sổ của bề mặt
+    for (UIView *overlay in @[surface.wifiLabel ?: [NSNull null],
+                              surface.barsView ?: [NSNull null],
+                              surface.carrierLabel ?: [NSNull null]]) {
         if ([overlay isKindOfClass:[UIView class]] && overlay.superview != window) {
             [overlay removeFromSuperview];
             [window addSubview:overlay];
@@ -354,20 +391,14 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     }
     if (!self.dumpedOnce) {
         self.dumpedOnce = YES;
-        FG5Log(@"bam vao cua so: %@ frame=%@", NSStringFromClass([window class]),
-               NSStringFromCGRect(window.frame));
-        if (found[@"wifi"]) {
-            FG5Log(@"chuoi view cha cua icon Wi-Fi: %@",
-                   [self ancestorChainOfView:found[@"wifi"]]);
-        }
-        FG5Log(@"— dump cay thanh trang thai (phuc vu chan doan) —");
+        FG5Log(@"— dump cay cua be mat dau tien (phuc vu chan doan) —");
         self.dumpBudget = 220;
         [self dumpTree:(UIView *)window depth:0];
     }
 
-    UIView *wifi = found[@"wifi"];
-    UIView *cellular = found[@"cellular"];
-    NSArray *strings = found[@"strings"];
+    UIView *wifi = surface.wifi;
+    UIView *cellular = surface.cellular;
+    NSArray *strings = surface.strings ?: @[];
 
     // Chiều cao THANH TRẠNG THÁI thật + profile — tính trước vòng nhận diện
     // nhà mạng vì nhận diện theo vị trí cần sbH. Sửa ở 1.1.3: KHÔNG lấy
@@ -455,49 +486,49 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         // sau nhãn (ảnh máy thật 26/11).
         wifi.alpha = 0.0;
         [self setSubviewsAlpha:wifi alpha:0.0];
-        if (!self.wifiLabel) {
-            self.wifiLabel = [[UILabel alloc] init];
-            self.wifiLabel.textAlignment = NSTextAlignmentCenter;
-            self.wifiLabel.adjustsFontSizeToFitWidth = YES;
-            self.wifiLabel.minimumScaleFactor = 0.6;
-            [window addSubview:self.wifiLabel];
+        if (!surface.wifiLabel) {
+            surface.wifiLabel = [[UILabel alloc] init];
+            surface.wifiLabel.textAlignment = NSTextAlignmentCenter;
+            surface.wifiLabel.adjustsFontSizeToFitWidth = YES;
+            surface.wifiLabel.minimumScaleFactor = 0.6;
+            [window addSubview:surface.wifiLabel];
         }
-        self.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
+        surface.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *label = FG5EffectiveLabel();
-        self.wifiLabel.text = label;
-        self.wifiLabel.textColor = contentColor;
-        CGSize textSize = [label sizeWithAttributes:@{NSFontAttributeName: self.wifiLabel.font}];
+        surface.wifiLabel.text = label;
+        surface.wifiLabel.textColor = contentColor;
+        CGSize textSize = [label sizeWithAttributes:@{NSFontAttributeName: surface.wifiLabel.font}];
         CGRect wr = [wifi convertRect:wifi.bounds toView:window];
         CGFloat w = MAX(wr.size.width, ceil(textSize.width) + 6);
         w = MIN(w, labelMaxW);
         // Canh theo đúng dải dọc của icon gốc (mọi đời máy đều đúng dải của nó)
         CGFloat ly = (wr.size.height >= 8) ? wr.origin.y : bandY;
         CGFloat lh = (wr.size.height >= 8) ? wr.size.height : bandH;
-        self.wifiLabel.frame = CGRectMake(CGRectGetMidX(wr) - w / 2.0, ly, w, lh);
-        self.wifiLabel.hidden = NO;
-        [window bringSubviewToFront:self.wifiLabel];
+        surface.wifiLabel.frame = CGRectMake(CGRectGetMidX(wr) - w / 2.0, ly, w, lh);
+        surface.wifiLabel.hidden = NO;
+        [window bringSubviewToFront:surface.wifiLabel];
     } else if (!gOnlyOnWifi) {
         // Tắt "chỉ khi có Wi-Fi": vẫn hiện nhãn ở cụm phải của thanh trạng thái
-        if (!self.wifiLabel) {
-            self.wifiLabel = [[UILabel alloc] init];
-            self.wifiLabel.textAlignment = NSTextAlignmentCenter;
-            self.wifiLabel.adjustsFontSizeToFitWidth = YES;
-            self.wifiLabel.minimumScaleFactor = 0.6;
-            [window addSubview:self.wifiLabel];
+        if (!surface.wifiLabel) {
+            surface.wifiLabel = [[UILabel alloc] init];
+            surface.wifiLabel.textAlignment = NSTextAlignmentCenter;
+            surface.wifiLabel.adjustsFontSizeToFitWidth = YES;
+            surface.wifiLabel.minimumScaleFactor = 0.6;
+            [window addSubview:surface.wifiLabel];
         }
-        self.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
+        surface.wifiLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *label = FG5EffectiveLabel();
-        self.wifiLabel.text = label;
-        self.wifiLabel.textColor = contentColor;
-        CGSize textSize = [label sizeWithAttributes:@{NSFontAttributeName: self.wifiLabel.font}];
+        surface.wifiLabel.text = label;
+        surface.wifiLabel.textColor = contentColor;
+        CGSize textSize = [label sizeWithAttributes:@{NSFontAttributeName: surface.wifiLabel.font}];
         CGFloat w = MIN(ceil(textSize.width) + 6, labelMaxW);
         CGFloat rightInset = (profile == 2) ? 38 : (profile == 1) ? 36 : 52;
-        self.wifiLabel.frame = CGRectMake(window.bounds.size.width - rightInset - w,
+        surface.wifiLabel.frame = CGRectMake(window.bounds.size.width - rightInset - w,
                                           bandY, w, bandH);
-        self.wifiLabel.hidden = NO;
-        [window bringSubviewToFront:self.wifiLabel];
+        surface.wifiLabel.hidden = NO;
+        [window bringSubviewToFront:surface.wifiLabel];
     } else {
-        self.wifiLabel.hidden = YES;
+        surface.wifiLabel.hidden = YES;
         static BOOL loggedNoWifi = NO;
         if (!loggedNoWifi) {
             loggedNoWifi = YES;
@@ -508,15 +539,15 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     // — Vạch sóng giả —
     CGRect barsRect = CGRectZero;
     if (gFakeBars) {
-        if (!self.barsView) {
-            self.barsView = [[UIView alloc] init];
+        if (!surface.barsView) {
+            surface.barsView = [[UIView alloc] init];
             for (NSInteger i = 0; i < 4; i++) {
                 UIView *bar = [[UIView alloc] init];
                 bar.tag = 100 + i;
                 bar.layer.cornerRadius = 0.75;
-                [self.barsView addSubview:bar];
+                [surface.barsView addSubview:bar];
             }
-            [window addSubview:self.barsView];
+            [window addSubview:surface.barsView];
         }
         if (cellular) {
             cellular.alpha = 0.0;
@@ -534,7 +565,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
             CGFloat bx = window.bounds.size.width - ((profile == 2) ? 108 : 104);
             barsRect = CGRectMake(bx, bandY, 18, bandH);
         }
-        self.barsView.frame = CGRectMake(barsRect.origin.x, barsRect.origin.y,
+        surface.barsView.frame = CGRectMake(barsRect.origin.x, barsRect.origin.y,
                                          18, barsRect.size.height);
         NSInteger active = FG5EffectiveBarsCount();
         CGFloat bh = barsRect.size.height;
@@ -542,17 +573,17 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         CGFloat heights[4] = {3, 5, 7, 9};
         CGFloat x = 0;
         for (NSInteger i = 0; i < 4; i++) {
-            UIView *bar = [self.barsView viewWithTag:100 + i];
+            UIView *bar = [surface.barsView viewWithTag:100 + i];
             CGFloat h = heights[i] * scale;
             bar.frame = CGRectMake(x, bh - 2 - h, 3, h);
             bar.backgroundColor = (i < active) ? contentColor
                                                : [contentColor colorWithAlphaComponent:0.3];
             x += 4.5;
         }
-        self.barsView.hidden = NO;
-        [window bringSubviewToFront:self.barsView];
+        surface.barsView.hidden = NO;
+        [window bringSubviewToFront:surface.barsView];
     } else {
-        self.barsView.hidden = YES;
+        surface.barsView.hidden = YES;
         if (cellular) {
             cellular.alpha = 1.0;
             [self setSubviewsAlpha:cellular alpha:1.0];
@@ -562,7 +593,7 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
     // — Tên nhà mạng —
     if (serviceView) {
         // Có view chữ của hệ thống: thay chữ ngay trên view đó (ổn định nhất)
-        self.carrierLabel.hidden = YES;
+        surface.carrierLabel.hidden = YES;
         if (gFakeCarrier) {
             serviceView.hidden = NO;
             NSString *carrier = FG5EffectiveCarrier();
@@ -578,43 +609,43 @@ static void FG5PrefsChangedCallback(CFNotificationCenterRef center, void *observ
         }
     } else if (gFakeCarrier) {
         // Không thấy view chữ: vẽ nhãn riêng theo profile
-        if (!self.carrierLabel) {
-            self.carrierLabel = [[UILabel alloc] init];
-            self.carrierLabel.adjustsFontSizeToFitWidth = YES;
-            self.carrierLabel.minimumScaleFactor = 0.6;
-            [window addSubview:self.carrierLabel];
+        if (!surface.carrierLabel) {
+            surface.carrierLabel = [[UILabel alloc] init];
+            surface.carrierLabel.adjustsFontSizeToFitWidth = YES;
+            surface.carrierLabel.minimumScaleFactor = 0.6;
+            [window addSubview:surface.carrierLabel];
         }
-        self.carrierLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
+        surface.carrierLabel.font = [self statusBarFontFromStrings:strings size:fontSize];
         NSString *carrier = FG5EffectiveCarrier();
-        self.carrierLabel.text = carrier;
-        self.carrierLabel.textColor = contentColor;
-        CGSize textSize = [carrier sizeWithAttributes:@{NSFontAttributeName: self.carrierLabel.font}];
+        surface.carrierLabel.text = carrier;
+        surface.carrierLabel.textColor = contentColor;
+        CGSize textSize = [carrier sizeWithAttributes:@{NSFontAttributeName: surface.carrierLabel.font}];
         CGFloat cw = MIN(ceil(textSize.width) + 2, carrierMaxW);
         CGFloat x, cy, ch;
         if (profile == 0) {
             // Cổ điển: nhãn nằm ngay sau vạch sóng ở cụm trái
-            x = gFakeBars ? CGRectGetMaxX(self.barsView.frame) + 4 : 8;
-            cy = gFakeBars ? self.barsView.frame.origin.y : bandY;
-            ch = gFakeBars ? self.barsView.frame.size.height : bandH;
+            x = gFakeBars ? CGRectGetMaxX(surface.barsView.frame) + 4 : 8;
+            cy = gFakeBars ? surface.barsView.frame.origin.y : bandY;
+            ch = gFakeBars ? surface.barsView.frame.size.height : bandH;
         } else {
             // Tai thỏ/Island: nhãn nằm ở tai phải, ngay trước vạch sóng,
             // không lấn vào vùng giữa (tai thỏ/Island)
-            CGFloat anchorX = gFakeBars ? self.barsView.frame.origin.x
-                                        : CGRectGetMinX(self.wifiLabel.frame);
+            CGFloat anchorX = gFakeBars ? surface.barsView.frame.origin.x
+                                        : CGRectGetMinX(surface.wifiLabel.frame);
             x = anchorX - cw - 3;
             CGFloat minX = window.bounds.size.width * ((profile == 2) ? 0.64 : 0.63);
             if (x < minX) x = minX;
             cy = bandY;
             ch = bandH;
         }
-        self.carrierLabel.frame = CGRectMake(x, cy, cw, ch);
-        self.carrierLabel.hidden = NO;
-        [window bringSubviewToFront:self.carrierLabel];
+        surface.carrierLabel.frame = CGRectMake(x, cy, cw, ch);
+        surface.carrierLabel.hidden = NO;
+        [window bringSubviewToFront:surface.carrierLabel];
     } else {
-        self.carrierLabel.hidden = YES;
+        surface.carrierLabel.hidden = YES;
     }
 
-    self.applied = YES;
+    surface.applied = YES;
 }
 
 @end

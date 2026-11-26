@@ -1,4 +1,4 @@
-// FG5License.m — Fake5G 1.1.3
+// FG5License.m — Fake5G 1.1.4
 // Gồm: tiện ích prefs + log dùng chung (FG5Shared) và hệ bản quyền (FG5License).
 #import "FG5Shared.h"
 #import "FG5License.h"
@@ -302,6 +302,11 @@ FG5LicState FG5LicenseCurrentState(NSInteger *daysLeftOut, NSString **nameOut) {
 BOOL FG5LicenseActive(void) {
     FG5LicState st = FG5LicenseCurrentState(NULL, NULL);
     return st == FG5LicStateTrial || st == FG5LicStatePermanent || st == FG5LicStateTimed;
+}
+
+BOOL FG5LicenseHasActiveKey(void) {
+    FG5LicState st = FG5LicenseCurrentState(NULL, NULL);
+    return st == FG5LicStatePermanent || st == FG5LicStateTimed;
 }
 
 NSString *FG5LicenseStatusText(void) {

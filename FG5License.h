@@ -1,4 +1,4 @@
-// FG5License.h — Fake5G 1.1.3
+// FG5License.h — Fake5G 1.1.4
 // Hệ bản quyền theo đúng mẫu ZUS 1.2.x đã chạy thật trên máy:
 //  - Dùng thử 3 ngày tự động từ lần chạy đầu; mốc ghi 3 nơi (prefs + Keychain
 //    + file trong Documents), lấy mốc sớm nhất, chống vặn ngược đồng hồ
@@ -24,6 +24,10 @@ FG5LicState FG5LicenseCurrentState(NSInteger * _Nullable daysLeftOut,
                                    NSString * _Nullable * _Nullable nameOut);
 // YES khi tweak được chạy tính năng (còn dùng thử hoặc key còn hạn)
 BOOL FG5LicenseActive(void);
+// YES chỉ khi có KEY đang còn hạn (vĩnh viễn hoặc key phụ chưa hết 3 ngày).
+// Trang Cài đặt mở khoá bằng hàm này: chưa kích hoạt key thì không vào
+// được phần điều chỉnh, kể cả đang trong dùng thử (yêu cầu của anh Quoc).
+BOOL FG5LicenseHasActiveKey(void);
 // Dòng trạng thái hiển thị trong Cài đặt
 NSString *FG5LicenseStatusText(void);
 // Kiểm tra + lưu key. Thành công trả YES và (nếu có) tên chủ key qua nameOut.

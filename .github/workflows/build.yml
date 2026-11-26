@@ -22,7 +22,12 @@ jobs:
 
       - name: Clone Theos
         run: |
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          if [ "${{ matrix.scheme }}" = "roothide" ]; then
+            REPO=https://github.com/roothide/theos.git
+          else
+            REPO=https://github.com/theos/theos.git
+          fi
+          git clone --recursive "$REPO" "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
 
       - name: Install iOS SDK
